@@ -15,7 +15,14 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.settings import ModelSettings
 
-from ..grounding import Grounder, GroundingResult
+from ..grounding import (
+    Grounder,
+    GroundingResult,
+    prompt_leaks,
+    scrub_prompt_leaks,
+    scrub_req_refs,
+    unknown_req_refs,
+)
 from ..models import (
     CitationStats,
     ConsistencyResult,
@@ -55,6 +62,33 @@ class _Check:
     setter: Callable[[str], None]
     remover: Callable[[], None]
     required: bool = True  # пустая цитата недопустима
+    # свободный текст элемента (reasoning, recommendation, …): (имя поля, значение, setter)
+    texts: list[tuple[str, str, Callable[[str], None]]] = field(default_factory=list)
+
+
+def _texts(obj: Any, *names: str) -> list[tuple[str, str, Callable[[str], None]]]:
+    return [(n, getattr(obj, n) or "", lambda v, n=n: setattr(obj, n, v)) for n in names]
+
+
+def _text_issues(checks: list[_Check], known: set[str]) -> list[tuple[_Check, str, str, Callable[[str], None], str]]:
+    """Несуществующие REQ-xxx и ссылки на служебные части промпта в тексте ответа."""
+    out = []
+    for ch in checks:
+        for name, value, setter in ch.texts:
+            problems = []
+            bad = unknown_req_refs(value, known)
+            if bad:
+                problems.append(
+                    f"несуществующие ID {', '.join(bad)} (если это номер строки — пиши «стр. N»)"
+                )
+            leaks = prompt_leaks(value)
+            if leaks:
+                problems.append(
+                    f"ссылка на служебную инструкцию «{leaks[0]}» — замени на реальный стандарт"
+                )
+            if problems:
+                out.append((ch, name, value, setter, "; ".join(problems)))
+    return out
 
 
 def _verify(ctx: RunContext[AgentDeps], checks: list[_Check]) -> None:
@@ -77,18 +111,28 @@ def _verify(ctx: RunContext[AgentDeps], checks: list[_Check]) -> None:
         else:
             failures.append((ch, "цитата не найдена в документе"))
 
-    if failures and deps.grounding_retries < MAX_GROUNDING_RETRIES:
+    text_issues = _text_issues([ch for ch in checks if all(ch is not f for f, _ in failures)], g.valid_req_ids)
+
+    if (failures or text_issues) and deps.grounding_retries < MAX_GROUNDING_RETRIES:
         deps.grounding_retries += 1
         deps.stats.retries_issued += 1
         deps.prev_failures = len(failures)
         lines = [f"{i}) {ch.label}: «{ch.quote[:160]}» — {why}" for i, (ch, why) in enumerate(failures[:25], start=1)]
+        lines += [
+            f"{len(lines) + i}) {ch.label}.{name}: {why}"
+            for i, (ch, name, _v, _s, why) in enumerate(text_issues[:25], start=1)
+        ]
         raise ModelRetry(
-            "Автоматический верификатор цитат отклонил элементы ответа:\n"
+            "Автоматический верификатор отклонил элементы ответа:\n"
             + "\n".join(lines)
             + "\nИсправь: замени каждую цитату ДОСЛОВНЫМ фрагментом из пронумерованного текста документа "
-            "(без номера строки) и используй только существующие req_id, либо удали элемент. "
-            "Остальные элементы верни без изменений."
+            "(без номера строки), используй только существующие req_id (REQ-xxx из списка требований) и ссылки "
+            "на реальные стандарты, либо удали элемент. Остальные элементы верни без изменений."
         )
+
+    # ретраи исчерпаны: текст чиним детерминированно (REQ-167 → «стр. 167», утечки промпта — убираем)
+    for _ch, _name, value, setter, _why in text_issues:
+        setter(scrub_prompt_leaks(scrub_req_refs(value, g.valid_req_ids)))
 
     # финальная попытка: принимаем подтверждённое, остальное — в карантин
     for ch, res in passed:
@@ -132,6 +176,7 @@ def _defect_checks(defects: list, prefix: str) -> list[_Check]:
                 claim=d.reasoning,
                 setter=lambda v, d=d: setattr(d, "exact_quote", v),
                 remover=_list_remover(defects, d),
+                texts=_texts(d, "reasoning", "recommendation", "standard_ref"),
             )
         )
     return checks
@@ -274,6 +319,7 @@ def build_agents(model: Any) -> AgentSuite:
                 t.derivation,
                 lambda v, t=t: setattr(t, "criterion_quote", v),
                 _list_remover(out.traces, t),
+                texts=_texts(t, "applicable_rules", "derivation", "expected_by_rules", "expected_by_criterion"),
             )
             for i, t in enumerate(out.traces)
         ]
@@ -303,6 +349,7 @@ def build_agents(model: Any) -> AgentSuite:
                 q.question,
                 lambda v, q=q: setattr(q, "before_text", v),
                 _list_remover(out.questions, q),
+                texts=_texts(q, "question", "recommended_option", "decision_impact", "after_ears_proposal"),
             )
             for i, q in enumerate(out.questions)
         ]

@@ -228,3 +228,84 @@ class Grounder:
 def ground_quote(quote: str, text: str, hint: tuple[int, int] | None = None) -> GroundingResult:
     """Удобная функция для разовой проверки."""
     return Grounder(text).ground(quote, hint)
+
+
+# ---------------------------------------------------------------------------
+# Проверки свободного текста LLM (reasoning / recommendation / standard_ref)
+# ---------------------------------------------------------------------------
+
+REQ_REF = re.compile(r"\bREQ-(\d{1,4})\b")
+
+# Утечка служебных формулировок промпта вместо реальных стандартов
+PROMPT_LEAK = re.compile(
+    r"финтех[-\s]?профил\w*(?:\s+(?:РК|kz-banking))?(?:\s*\((?:пункт|п\.)[^)]*\))?"
+    r"|профил\w*\s+kz-banking|kz-banking"
+    r"|(?:служебн\w+\s+)?чек-лист\w*\s+(?:банковск\w+\s+)?предметн\w+\s+област\w*(?:\s+РК)?"
+    r"|согласно\s+(?:инструкци\w+|промпт\w*)|эталон\w*\s+критери\w+|шкал\w+\s+серь[её]зност\w+",
+    re.I,
+)
+
+
+def unknown_req_refs(text: str, known: set[str]) -> list[str]:
+    """REQ-xxx, упомянутые в тексте, которых нет среди требований отчёта (пустой ``known`` — проверка выключена)."""
+    if not known or not text:
+        return []
+    seen: list[str] = []
+    for m in REQ_REF.finditer(text):
+        rid = m.group(0)
+        if rid not in known and rid not in seen:
+            seen.append(rid)
+    return seen
+
+
+def scrub_req_refs(text: str, known: set[str]) -> str:
+    """Заменяет несуществующие «REQ-167» на «стр. 167»: модель путает ID требования с номером строки."""
+    if not known or not text:
+        return text
+    return REQ_REF.sub(lambda m: m.group(0) if m.group(0) in known else f"стр. {int(m.group(1))}", text)
+
+
+def prompt_leaks(text: str) -> list[str]:
+    return [m.group(0) for m in PROMPT_LEAK.finditer(text or "")]
+
+
+def scrub_prompt_leaks(text: str) -> str:
+    """Последняя линия обороны: убирает ссылки на служебные части промпта."""
+    if not text:
+        return text
+    out = PROMPT_LEAK.sub("требования банковской предметной области", text)
+    return re.sub(r"\s{2,}", " ", out).strip()
+
+
+_QUOTED = re.compile(r"«([^»]{2,300})»|“([^”]{2,300})”|\"([^\"]{2,300})\"|'([^']{2,300})'")
+_REPLACE_PAIR = re.compile(
+    r"(?:«([^»]+)»|\"([^\"]+)\"|'([^']+)')\s*(?:на|→|->|=>)\s*(?:«([^»]+)»|\"([^\"]+)\"|'([^']+)')", re.I
+)
+_REPLACE_VERB = re.compile(r"замен|исправ|изменит|переформулир|переписа|должн\w* быть|стало", re.I)
+
+
+def _first(groups: tuple) -> str:
+    return next((g for g in groups if g), "")
+
+
+def is_noop_fix(quote: str, recommendation: str) -> bool:
+    """True, если «исправление» дословно повторяет исходный текст (before == after).
+
+    Срабатывает на явную пару «X» → «X» и на «исправить … на «Y»», где Y — фрагмент из ≥2 слов,
+    уже присутствующий в цитате без изменений.
+    """
+    if not recommendation:
+        return False
+    for m in _REPLACE_PAIR.finditer(recommendation):
+        a, b = _first(m.groups()[:3]), _first(m.groups()[3:])
+        if a and b and normalize(a) == normalize(b):
+            return True
+    if normalize(recommendation) == normalize(quote):
+        return True
+    if not _REPLACE_VERB.search(recommendation):
+        return False
+    nq = normalize(quote)
+    frags = [_first(m.groups()) for m in _QUOTED.finditer(recommendation)]
+    targets = [f for f in frags if len(normalize(f).split()) >= 2]
+    # единственный предложенный текст уже стоит в цитате — правка ничего не меняет
+    return len(frags) == 1 and len(targets) == 1 and normalize(targets[0]) in nq

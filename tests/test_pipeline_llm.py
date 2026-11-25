@@ -181,9 +181,13 @@ async def test_full_pipeline_with_mock_llm(sample_md, mock_opts):
     assert report.acceptance_traces and report.acceptance_traces[0].verdict == "contradiction"
     assert any("максимум один такой push" in d.exact_quote for d in report.defects)
 
-    # противоречие Ф-2 ↔ критерий приёмки найдено LLM и заземлено на строку 38
+    # противоречие Ф-2 ↔ критерий приёмки: найдено с обеих сторон (Ф-2, стр. 38 и трасса критерия, стр. 64),
+    # дедупликация слила их в ОДИН дефект уровня Blocker (прямое противоречие правила и критерия приёмки)
     contra = [d for d in report.defects if d.source == "llm_crosscheck" and d.category == "consistency"]
-    assert contra and contra[0].line_start == 38 and contra[0].grounding_status == "exact"
+    blocker = [d for d in contra if d.severity == "Blocker"]
+    assert len(blocker) == 1 and blocker[0].merged_count == 2 and blocker[0].grounding_status == "exact"
+    assert blocker[0].line_start in (38, 64)
+    assert report.metrics.by_severity["Blocker"] >= 1
 
     # самокоррекция: галлюцинация QualityFilter исправлена после ModelRetry
     fixed = [d for d in report.defects if d.source == "llm_quality"]

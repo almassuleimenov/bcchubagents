@@ -5,5 +5,5 @@
   - **Почему это дефект:** {{ d.reasoning | cell }}
   - **Критерий:** {{ d.standard_ref | cell }}
   - **Как исправить:** {{ d.recommendation | cell }}
-  - <sub>Источник: {{ SOURCE_RU[d.source] }}{% if d.rule_id %} `{{ d.rule_id }}`{% endif %}{% if d.source == "deterministic" and d.confirmed_by_llm %} · подтверждено LLM{% endif %} · цитата: {{ "точное совпадение" if d.grounding_status == "exact" else "нечёткое совпадение " ~ d.grounding_score ~ "%" }}</sub>
+  - <sub>Источник: {{ SOURCE_RU[d.source] }}{% if d.rule_id %} `{{ d.rule_id }}`{% endif %}{% if d.source == "deterministic" and d.confirmed_by_llm %} · подтверждено LLM{% endif %}{% if d.merged_count > 1 %} · объединено находок: {{ d.merged_count }} ({{ d.merged_rules | join(", ") }}){% endif %} · цитата: {{ "точное совпадение" if d.grounding_status == "exact" else "нечёткое совпадение " ~ d.grounding_score ~ "%" }}</sub>
 {%- endmacro %}

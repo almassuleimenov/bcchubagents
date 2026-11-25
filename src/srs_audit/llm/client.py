@@ -253,23 +253,24 @@ def _wait(retry_state) -> float:
 def describe_error(exc: BaseException) -> str:
     """Короткое человекочитаемое описание ошибки провайдера для индикатора прогресса."""
     from pydantic_ai import exceptions as E
-
     from pydantic_ai.exceptions import FallbackExceptionGroup
 
     if isinstance(exc, FallbackExceptionGroup):
-        return "все модели цепочки: " + "; ".join(describe_error(e) for e in exc.exceptions[:3])
+        return "все модели цепочки недоступны: " + "; ".join(describe_error(e) for e in exc.exceptions[:4])
     status = getattr(exc, "status_code", None)
+    model = getattr(exc, "model_name", "") or ""
+    prefix = f"{model}: " if model else ""
     if isinstance(exc, E.ModelTimeoutError) or isinstance(exc, (asyncio.TimeoutError, TimeoutError)):
-        return "таймаут ответа модели"
-    if status == 503 or isinstance(exc, E.ModelUnavailableError):
-        return "503 — модель перегружена"
-    if status == 429 or isinstance(exc, E.ModelRateLimitError):
-        return "429 — лимит запросов"
+        return f"{prefix}таймаут ответа модели"
     if isinstance(exc, E.ModelQuotaExceededError):
-        return "исчерпана квота"
+        return f"{prefix}429 — исчерпана дневная квота"
+    if status == 503 or isinstance(exc, E.ModelUnavailableError):
+        return f"{prefix}503 — модель перегружена"
+    if status == 429 or isinstance(exc, E.ModelRateLimitError):
+        return f"{prefix}429 — лимит запросов в минуту"
     if status:
-        return f"HTTP {status}"
-    return type(exc).__name__
+        return f"{prefix}HTTP {status}"
+    return f"{prefix}{type(exc).__name__}"
 
 
 @dataclass

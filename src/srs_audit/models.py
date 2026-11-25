@@ -261,6 +261,9 @@ class AuditDefect(BaseModel):
     line_end: int = 0
     page: int | None = None
     confirmed_by_llm: bool = False
+    # --- заполняет dedup.py: сколько находок разных слоёв слито в этот дефект
+    merged_count: int = 1
+    merged_rules: list[str] = Field(default_factory=list)
 
     @property
     def category_ru(self) -> str:

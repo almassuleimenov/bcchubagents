@@ -547,7 +547,7 @@ def _api(ctx: _Ctx) -> None:
                 "логах и истории, что недопустимо для изменения настроек клиента.",
                 "RFC 9110 §9.2.1 (safe methods); ISO/IEC/IEEE 29148 §5.2.5 correct; IEEE 830 §4.3.1",
                 "api_contract",
-                "Critical",
+                "Blocker",
                 "Использовать PUT /cards/{cardId}/spending-alert (идемпотентная замена) или POST, параметры — в теле JSON.",
                 hint=(mr.line_start, mr.line_end),
             )
@@ -561,7 +561,7 @@ def _api(ctx: _Ctx) -> None:
                 "Для изменяющего метода не определён механизм идемпотентности (Idempotency-Key / requestId) и "
                 "поведение при повторе и параллельных запросах"
                 + (" — «замена» настройки не защищает от гонки двух одновременных сохранений." if replace_sem else "."),
-                "Финтех-профиль kz-banking: идемпотентность платёжных/настроечных операций; ISO/IEC/IEEE 29148 §5.2.5 complete",
+                "RFC 9110 §9.2.2 (idempotent methods); IETF draft-ietf-httpapi-idempotency-key-header; ISO/IEC/IEEE 29148 §5.2.5 complete",
                 "fintech",
                 "Minor" if replace_sem else "Major",
                 "Ввести заголовок Idempotency-Key (UUID, TTL 24 ч) и правило last-write-wins/версионирование (ETag/If-Match).",
@@ -599,7 +599,7 @@ def _api(ctx: _Ctx) -> None:
                 "FIN-MONEY-FLOAT",
                 b.text,
                 f"Денежное поле «{name}» имеет тип {ftype}: двоичная плавающая точка даёт ошибки округления.",
-                "ISO 4217 (minor units); финтех-профиль: запрет float для денег; ISO 29148 §5.2.5 correct",
+                "ISO 4217 (minor units); IEEE 754 (ошибки двоичной плавающей точки); ISO/IEC/IEEE 29148 §5.2.5 correct",
                 "fintech",
                 "Critical",
                 "Использовать целое число в минимальных единицах (тиын) или decimal-строку + код валюты ISO 4217.",
@@ -648,7 +648,7 @@ def _api(ctx: _Ctx) -> None:
                     "успех от отказа; два способа сообщить об одной ошибке противоречат друг другу.",
                     "IEEE 830 §4.3.4 consistent; RFC 9110 §15; ISO/IEC/IEEE 29148 §5.2.6 consistent",
                     "consistency",
-                    "Critical",
+                    "Blocker" if re.search(r"\b400\b", ctx.doc.text) else "Critical",
                     "Возвращать 400/422 с единым форматом ошибки (например, RFC 9457 problem+json: code, message, field); "
                     "200 — только при успешном сохранении.",
                     hint=(b.line_start, b.line_end),
@@ -703,7 +703,7 @@ def _api(ctx: _Ctx) -> None:
                 anchor.text,
                 f"Не описаны коды {', '.join(missing)}: конфликт параллельных изменений (409), бизнес-валидация "
                 "суммы вне диапазона (422), превышение лимита запросов (429). Поведение клиента в этих случаях не определено.",
-                "IEEE 830 §4.3.3 complete; финтех-профиль: обработка ошибок и rate limiting",
+                "IEEE 830 §4.3.3 complete; RFC 9110 §15.5.10 (409), §15.5.21 (422); RFC 6585 §4 (429)",
                 "api_contract",
                 "Major",
                 "Добавить в контракт 409/422/429 с телом ошибки и рекомендацией по повтору (Retry-After).",
@@ -745,7 +745,7 @@ def _api(ctx: _Ctx) -> None:
             f"({', '.join(sorted(urls))}). Экран не сможет показать текущий порог, состояние переключателя и сумму за месяц.",
             "ISO/IEC/IEEE 29148 §5.2.6 complete/consistent; IEEE 830 §4.3.3",
             "completeness",
-            "Critical",
+            "Blocker",
             "Добавить GET /cards/{cardId}/spending-alert с полями threshold, enabled, spentThisMonth, currency.",
             req=reads,
         )
@@ -761,7 +761,7 @@ def _fintech(ctx: _Ctx) -> None:
                 context_quote(b.text, m.start(), m.end()),
                 f"Указан устаревший часовой пояс «{m.group(0)}»: с 01.03.2024 вся территория Казахстана "
                 "живёт по UTC+5 (Постановление Правительства РК). Границы суток/месяца будут смещены на час.",
-                "Финтех-профиль kz-banking (время); ISO/IEC/IEEE 29148 §5.2.5 correct",
+                "Постановление Правительства РК о едином часовом поясе UTC+5 с 01.03.2024; IANA tz Asia/Almaty; ISO/IEC/IEEE 29148 §5.2.5 correct",
                 "correctness",
                 "Critical",
                 "Использовать часовой пояс Asia/Almaty (UTC+5) и хранить время в UTC.",
@@ -777,7 +777,7 @@ def _fintech(ctx: _Ctx) -> None:
                     f"Время задано выражением «{m.group(0)}» без явного часового пояса. Фразу можно прочитать и как "
                     "место совершения покупки; не указан UTC-сдвиг (с 01.03.2024 Казахстан — UTC+5), из-за чего "
                     "покупки около полуночи на границе месяца могут попасть не в тот месяц.",
-                    "ISO/IEC/IEEE 29148 §5.2.5 unambiguous; финтех-профиль kz-banking (UTC+5); ISO 8601",
+                    "ISO/IEC/IEEE 29148 §5.2.5 unambiguous; ISO 8601 (смещение UTC); IANA tz Asia/Almaty (UTC+5)",
                     "ambiguity",
                     "Major",
                     "Писать «по времени Asia/Almaty (UTC+5)» и указать, какая метка времени операции используется.",
@@ -808,7 +808,7 @@ def _fintech(ctx: _Ctx) -> None:
                 context_quote(b.text, m.start(), m.end()),
                 f"Ограничение «{m.group(0)}» не подкреплено механизмом: при параллельной обработке двух событий "
                 "по одной карте оба могут увидеть «порог ещё не достигнут» и отправить два уведомления (race condition).",
-                "Финтех-профиль kz-banking (конкурентность); ISO/IEC/IEEE 29148 §5.2.5 complete",
+                "ISO/IEC/IEEE 29148 §5.2.5 complete, feasible; ISO/IEC 25010 (надёжность, целостность данных)",
                 "fintech",
                 "Major",
                 "Зафиксировать атомарную проверку-и-установку признака отправки (уникальный ключ карта+месяц, "
@@ -837,7 +837,7 @@ def _fintech(ctx: _Ctx) -> None:
                     "FIN-IBAN-INVALID",
                     m.group(0),
                     "IBAN Казахстана не проходит контроль ISO 13616 mod-97.",
-                    "ISO 13616; финтех-профиль kz-banking",
+                    "ISO 13616-1 (IBAN, контроль mod-97)",
                     "correctness",
                     "Major",
                     "Исправить пример IBAN (KZ + 2 контрольные цифры + 3 кода банка + 13 символов счёта).",

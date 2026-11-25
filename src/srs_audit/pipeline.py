@@ -43,6 +43,9 @@ from .models import (
     RunPassport,
 )
 from .parsers import parse_document
+from .dedup import merge_duplicates
+from .grounding import is_noop_fix, scrub_prompt_leaks, scrub_req_refs
+from .postfilter import split_false_positives
 from .preflight import run_preflight
 from .progress import Tracker
 from .scoring import compute_metrics
@@ -208,25 +211,34 @@ def to_audit(d: LLMDefect, source: str, g: Grounder, reqs_by_id: dict[str, Requi
     )
 
 
-def _dup(a: AuditDefect, b: AuditDefect) -> bool:
-    if not (a.line_start <= b.line_end and b.line_start <= a.line_end):
-        return False
-    if a.category == b.category:
-        return True
-    return fuzz.token_set_ratio(normalize(a.reasoning), normalize(b.reasoning)) >= 80
+def _why(exc: BaseException) -> str:
+    """Человекочитаемая причина сбоя LLM для примечаний отчёта (429/503/таймаут по каждой модели цепочки)."""
+    from .llm.client import describe_error
+
+    return describe_error(exc)
 
 
-def dedupe(base: list[AuditDefect], extra: list[AuditDefect]) -> list[AuditDefect]:
-    out = list(base)
-    for d in extra:
-        twin = next((x for x in out if _dup(x, d)), None)
-        if twin is None:
-            out.append(d)
-            continue
-        twin.confirmed_by_llm = True
-        if SEVERITY_ORDER[d.severity] < SEVERITY_ORDER[twin.severity] and twin.source != "deterministic":
-            twin.severity = d.severity
-    return out
+def _scrub_texts(report: AuditReport, known: set[str]) -> None:
+    """Последняя линия обороны: в тексте отчёта нет несуществующих REQ-xxx и ссылок на служебный промпт."""
+
+    def fix(obj, *names: str) -> None:
+        for n in names:
+            v = getattr(obj, n, "")
+            if v:
+                setattr(obj, n, scrub_prompt_leaks(scrub_req_refs(v, known)))
+
+    for d in report.defects:
+        fix(d, "reasoning", "recommendation", "standard_ref")
+    for c in report.set_checks:
+        fix(c, "comment")
+    for row in report.api_matrix:
+        fix(row, "comment")
+    for f in report.fintech_domains:
+        fix(f, "finding")
+    for t in report.acceptance_traces:
+        fix(t, "applicable_rules", "derivation", "expected_by_rules", "expected_by_criterion")
+    for q in report.questions:
+        fix(q, "question", "recommended_option", "decision_impact", "after_ears_proposal")
 
 
 def number_defects(defects: list[AuditDefect]) -> list[AuditDefect]:
@@ -284,7 +296,7 @@ async def _llm_stage(
         state["api_endpoints"] = ext.api_endpoints  # type: ignore[attr-defined]
         state["domain_facts"] = ext.domain_facts  # type: ignore[attr-defined]
     except Exception as exc:  # деградация: остаётся детерминированная нарезка
-        report_notes.append(f"RequirementExtractorAgent недоступен ({type(exc).__name__}: {str(exc)[:160]}); "
+        report_notes.append(f"RequirementExtractorAgent недоступен ({_why(exc)}); "
                             "использована детерминированная нарезка.")
         state["api_endpoints"], state["domain_facts"] = [], []
     g.valid_req_ids = {r.req_id for r in reqs}
@@ -363,7 +375,7 @@ async def _analysis_stage(
     llm_defects: list[AuditDefect] = []
     for res in q_results:
         if isinstance(res, BaseException):
-            report_notes.append(f"QualityFilterAgent: пакет не обработан ({type(res).__name__}: {str(res)[:160]}).")
+            report_notes.append(f"QualityFilterAgent: пакет не обработан ({_why(res)}).")
             continue
         for v in res.candidate_verdicts:
             verdicts[v.cand_id] = (v.keep, v.reason)
@@ -373,7 +385,7 @@ async def _analysis_stage(
                 llm_defects.append(a)
     cross_out: CrossCheckResult | None = None
     if isinstance(x_result, BaseException):
-        report_notes.append(f"CrossCheckFinTechAgent недоступен ({type(x_result).__name__}: {str(x_result)[:160]}); "
+        report_notes.append(f"CrossCheckFinTechAgent недоступен ({_why(x_result)}); "
                             "проверка набора выполнена правилами.")
     else:
         cross_out = x_result
@@ -385,7 +397,7 @@ async def _analysis_stage(
                 llm_defects.append(a)
     traces = []
     if isinstance(c_result, BaseException):
-        report_notes.append(f"Проход трассировки критериев приёмки не выполнен ({type(c_result).__name__}: {str(c_result)[:160]}).")
+        report_notes.append(f"Проход трассировки критериев приёмки не выполнен ({_why(c_result)}).")
     else:
         traces = list(c_result.traces)
         # Трасса «противоречие / правил недостаточно» сама по себе — доказательство: превращаем её в дефект кодом,
@@ -403,7 +415,8 @@ async def _analysis_stage(
                            f"({t.applicable_rules}) получается: {t.expected_by_rules}. Ход вывода: {t.derivation}"),
                 standard_ref="ISO/IEC/IEEE 29148 §5.2.6 consistent; IEEE 830 §4.3.4 consistent, §4.3.6 verifiable",
                 category="consistency" if contra else "completeness",
-                severity="Critical" if contra else "Major",
+                # прямое противоречие правила и критерия приёмки блокирует приёмку: тест не пройдёт ни при какой реализации
+                severity="Blocker" if contra else "Major",
                 recommendation=("Согласовать критерий приёмки и правило: явно определить, какая дата/метка времени и "
                                 "какое правило применяются, и исправить ожидаемый результат или требование."
                                 if contra else "Дополнить требования так, чтобы результат критерия однозначно вычислялся."),
@@ -430,7 +443,7 @@ async def _questions_stage(defects: list[AuditDefect], g: Grounder, state: dict,
     try:
         out = await _tracked(opts, "questions", "QuestionSynthesizerAgent · вопросы по ролям + EARS", runtime, suite.questions, f"ПОДТВЕРЖДЁННЫЕ ДЕФЕКТЫ:\n{defect_lines(focus[:80])}", deps, QuestionSet, cache)
     except Exception as exc:
-        notes.append(f"QuestionSynthesizerAgent недоступен ({type(exc).__name__}); вопросы сформированы по шаблонам.")
+        notes.append(f"QuestionSynthesizerAgent недоступен ({_why(exc)}); вопросы сформированы по шаблонам.")
         return []
     _absorb(state, deps)
     qs = []
@@ -563,8 +576,18 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
                 kept.append(c)
             else:
                 rejected.append(RejectedCandidate(rule_id=c.rule_id, req_id=c.req_id, quote=c.exact_quote, reason=why))
-        defects = dedupe(kept, dedupe([], llm_defects))
-    defects = number_defects(defects)
+        # пост-фильтр ложных срабатываний LLM (before == after, верная арифметика, curl -G)
+        llm_defects, false_pos = split_false_positives(llm_defects)
+        for d, why in false_pos:
+            rejected.append(RejectedCandidate(rule_id=d.rule_id or d.source, req_id=d.req_id, quote=d.exact_quote,
+                                              reason=f"пост-фильтр: {why}"))
+        defects = kept + llm_defects
+    # дедупликация находок всех слоёв — ДО скоринга
+    n_before = len(defects)
+    defects = number_defects(merge_duplicates(defects))
+    if n_before != len(defects):
+        notes.append(f"Дедупликация: {n_before} находок всех слоёв → {len(defects)} уникальных дефектов "
+                     "(дубли объединены, серьёзность — максимальная в группе).")
 
     _say(opts, "Шаг 5/5: Скоринг, вопросы, отчёт")
     questions: list[Question] = []
@@ -572,6 +595,10 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
         questions = await _questions_stage(defects, g, state, opts, notes)
     if not questions:
         questions = fallback_questions(defects)
+    questions = [
+        q for q in questions
+        if normalize(q.before_text) != normalize(q.after_ears_proposal) and not is_noop_fix(q.before_text, q.after_ears_proposal)
+    ]
     questions = finalize_questions(questions, defects)
 
     fallback_checks = offline_set.set_checks(defects)
@@ -599,6 +626,7 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
     report.acceptance_traces = state.get("traces", []) if state else []
     report.questions = questions
     report.rejected_candidates = rejected
+    _scrub_texts(report, g.valid_req_ids)
     report.metrics = compute_metrics(reqs, defects)
     if state:
         report.citation = state["stats"]
