@@ -1,0 +1,9 @@
+{% macro defect(d, SEV_ICON, CATEGORY_RU, SOURCE_RU) -%}
+- **{{ d.defect_id }}** {{ SEV_ICON[d.severity] }} **{{ d.severity }}** · {{ CATEGORY_RU[d.category] }} · 📍 {{ d.verified_location }}{% if d.req_id != "SET" %} · {{ d.req_id }}{% endif %}
+
+  - **Цитата:** {{ d.exact_quote | quote(300) }}
+  - **Почему это дефект:** {{ d.reasoning | cell }}
+  - **Критерий:** {{ d.standard_ref | cell }}
+  - **Как исправить:** {{ d.recommendation | cell }}
+  - <sub>Источник: {{ SOURCE_RU[d.source] }}{% if d.rule_id %} `{{ d.rule_id }}`{% endif %}{% if d.source == "deterministic" and d.confirmed_by_llm %} · подтверждено LLM{% endif %} · цитата: {{ "точное совпадение" if d.grounding_status == "exact" else "нечёткое совпадение " ~ d.grounding_score ~ "%" }}</sub>
+{%- endmacro %}

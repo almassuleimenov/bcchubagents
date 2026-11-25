@@ -49,3 +49,12 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# SRS Audit
+.env.*
+!.env.example
+.cache.db
+*.db-journal
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

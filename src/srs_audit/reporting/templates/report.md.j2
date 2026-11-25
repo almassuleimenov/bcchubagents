@@ -1,0 +1,254 @@
+{% from "_macros.md.j2" import defect with context %}
+# Отчёт о проверке требований
+
+**Документ:** {{ p.document_title }}
+
+> {{ VERDICT_ICON[m.verdict] }} **Вердикт: {{ m.verdict }}** · Индекс качества ТЗ **{{ m.score }}/100** · требований: {{ m.n_requirements }} · дефектов: {{ m.n_defects }} ({% for s in ["Blocker", "Critical", "Major", "Minor"] %}{{ SEV_ICON[s] }} {{ s }}: {{ m.by_severity.get(s, 0) }}{{ " · " if not loop.last }}{% endfor %})
+>
+> {{ VERDICT_TEXT[m.verdict] }}
+
+---
+
+## 1. Паспорт прогона
+
+| Параметр | Значение |
+| :--- | :--- |
+| Название документа | {{ p.document_title | cell }} |
+| Файл | `{{ p.document_path | cell }}` ({{ h.detected_format }}, {{ h.size_bytes }} байт{% if h.encoding %}, {{ h.encoding }}{% endif %}{% if h.pages %}, {{ h.pages }} стр.{% endif %}) |
+| SHA-256 документа | `{{ p.document_sha256[:16] }}…` |
+| Дата и время прогона | {{ p.started_at }} |
+| Модель LLM | {{ p.model | cell }} |
+| Режим | {{ "гибридный: детерминированные правила + 4 LLM-агента" if p.mode == "llm" else "офлайн: только детерминированные правила (без LLM)" }} |
+| Профиль проверки | `{{ p.profile }}` |
+| Версия агента | `{{ p.agent_version }}` |
+| Здоровье файла (Preflight) | **{{ h.status }}**{% for i in h.issues %}<br>`{{ i.code }}`: {{ i.message | cell }}{% endfor %} |
+| Citation Audit Badge | {% if p.mode == "llm" %}LLM-цитат проверено **{{ c.checked }}** → подтверждено **{{ c.confirmed }}** (точно {{ c.exact }}, нечётко {{ c.fuzzy }}) → исправлено после `ModelRetry` **{{ c.corrected_via_retry }}** (запросов на исправление: {{ c.retries_issued }}) → в карантин **{{ c.quarantined }}**. {% endif %}Цитаты детерминированных правил: {{ det_count }}/{{ det_count }} дословно найдены. **В отчёт попали только цитаты, найденные в документе (0 неподтверждённых).** |
+| Длительность | {{ p.duration_s }} с |
+| LLM: запросы / токены (вход / выход) / кэш | {{ p.llm_requests }} / {{ p.input_tokens }} / {{ p.output_tokens }} / попаданий в кэш: {{ p.cache_hits }} |
+{% if p.notes %}
+
+**Примечания к прогону:**
+{% for n in p.notes %}
+- {{ n }}
+{% endfor %}
+{% endif %}
+
+<details><summary>Методика проверки</summary>
+
+- **Отдельные требования:** ISO/IEC/IEEE 29148:2018 §5.2.5 (необходимость, однозначность, полнота, атомарность, реализуемость, проверяемость, корректность, соответствие) и §5.2.7 (язык требований), INCOSE GtWR v4 (R2, R6, R7, R8, R15/R16, R18, R26).
+- **Набор требований:** ISO/IEC/IEEE 29148:2018 §5.2.6 (полнота, непротиворечивость, реализуемость, понятность, валидируемость) и IEEE Std 830-1998 §4.3 (корректность, однозначность, полнота, согласованность, ранжирование, проверяемость, модифицируемость, трассируемость).
+- **Профиль kz-banking:** деньги (ISO 4217, тиын, запрет float), время (UTC+5 с 01.03.2024), идемпотентность, конкурентность, ИБ (PCI DSS v4.0.1, ПДн), контракт API (RFC 9110), аудит и эксплуатация.
+- **Конвейер:** Preflight → парсинг с координатами → детерминированный NLP-слой (razdel + pymorphy3) → LLM-агенты с верификатором цитат (rapidfuzz, порог 86) и `ModelRetry` → скоринг и Go/No-Go гейт.
+- **Шкала:** Blocker — разработку начинать нельзя; Critical — противоречие/непроверяемое ключевое правило/отсутствующая функция; Major — неоднозначность, неполнота сценария; Minor — оформление и трассируемость.
+</details>
+
+---
+
+## 2. Нарезка требований
+
+Агент выделил **{{ r.requirements | length }}** требований. ID в документе сохранены, где они были; иначе присвоен ID отчёта и сохранена дословная цитата.
+
+| ID в отчёте | ID в документе | Раздел / строка | Тип | Краткая формулировка / цитата |
+| :--- | :--- | :--- | :--- | :--- |
+{% for q in r.requirements %}
+| {{ q.req_id }} | {{ q.source_id or "—" }} | {{ (q.section_path.split(" › ")[-2:] | join(" › ")) | cell(60) }} / {{ q.location }} | {{ KIND_RU.get(q.kind, q.kind) }} | {% if q.summary %}**{{ q.summary | cell(140) }}**<br>{% endif %}{{ q.text | quote(220) }} |
+{% endfor %}
+
+---
+
+## 3. Проверка каждого требования
+
+Сводка по каждому требованию (свойства ISO 29148 §5.2.5):
+
+| ID | ID в документе | Строка | Результат | Нарушенные свойства | Дефекты |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+{% for row in req_rows %}
+| {{ row.req.req_id }} | {{ row.req.source_id or "—" }} | {{ row.req.line_start }} | {{ row.status }} | {{ row.props | join(", ") or "—" }} | {{ row.defects | map(attribute="defect_id") | join(", ") or "—" }} |
+{% endfor %}
+
+{% for row in req_rows if row.defects %}
+### {{ row.req.req_id }}{% if row.req.source_id %} · {{ row.req.source_id }}{% endif %} · {{ row.req.location }}
+
+> {{ row.req.text | cell(400) }}
+
+{% for d in row.defects %}
+{{ defect(d, SEV_ICON, CATEGORY_RU, SOURCE_RU) }}
+
+{% endfor %}
+{% endfor %}
+{% if ok_reqs %}
+**Требования без замечаний:** {{ ok_reqs | join(", ") }}.
+{% endif %}
+
+---
+
+## 4. Проверка всего набора требований
+
+### 4.1. Свойства набора (ISO/IEC/IEEE 29148 §5.2.6, IEEE 830 §4.3)
+
+| Свойство | Оценка | Обоснование |
+| :--- | :--- | :--- |
+{% for s in r.set_checks %}
+| {{ SET_PROPERTY_RU[s.prop] }} | {{ SET_VERDICT[s.verdict] }} | {{ s.comment | cell }} |
+{% endfor %}
+
+### 4.2. Матрица расхождений: бизнес-требования / UI / BPMN ↔ REST API
+
+{% if r.api_matrix %}
+| Аспект | Часть A (БТ / UI / BPMN / приёмка) | Часть B (REST API) | Статус | Комментарий |
+| :--- | :--- | :--- | :--- | :--- |
+{% for row in r.api_matrix %}
+| {{ row.aspect | cell }} | {{ (row.business_quote | quote(160)) if row.business_quote else "— нет —" }} | {{ (row.api_quote | quote(160)) if row.api_quote else "— нет —" }} | {{ MATRIX_STATUS[row.status] }} | {{ row.comment | cell(320) }} |
+{% endfor %}
+{% else %}
+В документе не найдено описание REST API — сверка не применима.
+{% endif %}
+
+{% if r.fintech_domains %}
+### 4.3. Финтех-аудит по 7 доменам (профиль kz-banking)
+
+| Домен | Статус | Вывод по документу |
+| :--- | :--- | :--- |
+{% for f in r.fintech_domains %}
+| {{ FINTECH_DOMAIN_RU[f.domain] }} | {{ DOMAIN_STATUS[f.status] }} | {{ f.finding | cell(400) }} |
+{% endfor %}
+{% endif %}
+
+{% if r.acceptance_traces %}
+### 4.3a. Трассировка критериев приёмки через правила документа
+
+Агент пошагово «исполняет» требования для каждого критерия приёмки и сравнивает полученный результат с тем, что ожидает критерий.
+
+| Критерий приёмки | Применимые правила | Вывод по правилам | Ожидает критерий | Итог |
+| :--- | :--- | :--- | :--- | :--- |
+{% for t in r.acceptance_traces %}
+| {{ t.criterion_quote | quote(160) }} | {{ t.applicable_rules | cell(200) }} | {{ t.expected_by_rules | cell(220) }} | {{ t.expected_by_criterion | cell(200) }} | {{ TRACE_STATUS[t.verdict] }} |
+{% endfor %}
+
+{% endif %}
+### 4.4. Дефекты уровня набора и межтребовательные противоречия
+
+{% for d in set_defects %}
+{{ defect(d, SEV_ICON, CATEGORY_RU, SOURCE_RU) }}
+
+{% else %}
+Дефектов уровня набора не выявлено.
+{% endfor %}
+{% set cross = r.defects | selectattr("source", "equalto", "llm_crosscheck") | rejectattr("req_id", "equalto", "SET") | list %}
+{% if cross %}
+Межтребовательные дефекты, привязанные к конкретным требованиям (подробно — в разделе 3): {% for d in cross %}**{{ d.defect_id }}** ({{ d.req_id }}, {{ d.verified_location }}){{ ", " if not loop.last else "." }}{% endfor %}
+
+{% endif %}
+
+---
+
+## 5. Сводка
+
+| Показатель | Значение |
+| :--- | :--- |
+| Требований выделено | **{{ m.n_requirements }}** |
+| Требований с замечаниями | {{ m.requirements_with_defects }} из {{ m.n_requirements }} |
+| Нарушений всего | **{{ m.n_defects }}** (правила: {{ det_count }}, LLM-агенты: {{ llm_count }}) |
+{% for s in ["Blocker", "Critical", "Major", "Minor"] %}
+| {{ SEV_ICON[s] }} {{ s }} | {{ m.by_severity.get(s, 0) }} |
+{% endfor %}
+| Плотность дефектов | {{ m.defect_density }} на требование |
+| **Индекс качества ТЗ** | **{{ m.score }} / 100** (взвешенная нагрузка {{ m.weighted_load }}; score = 100·e^(−load/1.5), веса B=10, C=5, M=2, m=0.5) |
+| Верификация цитат | {% if p.mode == "llm" %}{{ c.confirmed }} подтверждено / {{ c.quarantined }} в карантине / {{ c.corrected_via_retry }} исправлено самокоррекцией; {% endif %}в отчёте 0 неподтверждённых цитат |
+
+**Нарушения по критериям:** {% for name, n in by_cat %}{{ name }} — {{ n }}{{ "; " if not loop.last else "." }}{% endfor %}
+
+
+### Критичные дефекты
+
+{% for title, items in critical_groups.items() %}
+**{{ title }}:**
+{% for d in items %}
+- **{{ d.defect_id }}** {{ SEV_ICON[d.severity] }} {{ d.severity }} · {{ d.verified_location }}{% if d.req_id != "SET" %} · {{ d.req_id }}{% endif %} — {{ d.reasoning | cell(260) }}
+{% endfor %}
+
+{% endfor %}
+{% if other_critical %}
+**Прочие Blocker/Critical:**
+{% for d in other_critical %}
+- **{{ d.defect_id }}** {{ SEV_ICON[d.severity] }} {{ d.severity }} · {{ CATEGORY_RU[d.category] }} · {{ d.verified_location }} — {{ d.reasoning | cell(260) }}
+{% endfor %}
+{% endif %}
+
+---
+
+## 6. Итог и план действий
+
+### Вердикт: {{ VERDICT_ICON[m.verdict] }} {{ m.verdict }}
+
+**Можно ли начинать разработку и тестирование?** {{ VERDICT_TEXT[m.verdict] }}
+
+Основание (гейт: NO-GO при Blocker ≥ 1, Critical ≥ 3 или индексе < 60; CONDITIONAL GO при Critical 1–2, Major ≥ 5 или индексе 60–79.9):
+{% for reason in m.verdict_reasons %}
+- {{ reason }}
+{% endfor %}
+
+### Что исправить в первую очередь
+
+{% for f in r.priority_fixes %}
+{{ loop.index }}. {{ f }}
+{% else %}
+Критичных исправлений нет.
+{% endfor %}
+
+### Бэклог уточняющих вопросов по ролям
+
+{% for role, qs in roles.items() %}
+#### {{ role }} · {{ ROLE_RU[role] }}
+
+{% for q in qs %}
+**{{ q.question_id }}.** {{ q.question }} {% if q.priority < 4 %}<sub>(приоритет: {{ ["Blocker", "Critical", "Major", "Minor"][q.priority] }})</sub>{% endif %}
+
+- **Варианты решения:**
+{% for o in q.options %}
+  {{ loop.index }}. {{ o }}
+{% endfor %}
+- **Рекомендация:** {{ q.recommended_option }}
+- **Влияние на проект:** {{ q.decision_impact }}
+- **Было**{% if q.before_location %} ({{ q.before_location }}){% endif %}: {{ q.before_text | quote(300) }}
+- **Стало (EARS):** {{ q.after_ears_proposal }}
+- **Закрывает дефекты:** {{ q.related_defect_ids | join(", ") or "—" }}
+
+{% endfor %}
+{% else %}
+Уточняющих вопросов нет.
+{% endfor %}
+
+### Ручной чек-лист эксперта
+
+{% for item in r.manual_checklist %}
+- [ ] {{ item }}
+{% endfor %}
+
+### Карантин неподтверждённых гипотез
+
+{% if r.quarantine %}
+Эти утверждения LLM **не вошли в отчёт**: их цитаты не найдены в документе даже после самокоррекции.
+
+| Агент | Требование | Цитата модели | Причина |
+| :--- | :--- | :--- | :--- |
+{% for q in r.quarantine %}
+| {{ q.agent }} | {{ q.req_id or "—" }} | {{ q.quote | quote(160) }} | {{ q.reason | cell }} |
+{% endfor %}
+{% else %}
+Карантин пуст{% if p.mode == "llm" %}: все цитаты LLM подтверждены верификатором{% else %} (офлайн-режим: LLM не вызывалась){% endif %}.
+{% endif %}
+
+{% if r.rejected_candidates %}
+### Отсеянные ложные срабатывания правил (контекстный фильтр LLM)
+
+| Правило | Требование | Цитата | Почему отклонено |
+| :--- | :--- | :--- | :--- |
+{% for c in r.rejected_candidates %}
+| `{{ c.rule_id }}` | {{ c.req_id }} | {{ c.quote | quote(140) }} | {{ c.reason | cell }} |
+{% endfor %}
+{% endif %}
+
+---
+
+<sub>Отчёт сформирован автоматически агентом SRS Audit {{ p.agent_version }} · {{ p.finished_at }}. Каждое нарушение привязано к строке исходного документа; координаты вычислены кодом, а не моделью.</sub>

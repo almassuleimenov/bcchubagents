@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "srs-audit"
+version = "1.0.0"
+description = "Гибридный ИИ-агент статической проверки требований (ISO/IEC/IEEE 29148, IEEE 830, INCOSE GtWR) для банковского финтеха РК"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+  "pydantic>=2.9",
+  "pydantic-ai-slim[google,openai,anthropic]>=2.70",
+  "typer>=0.12",
+  "rich>=13.7",
+  "python-dotenv>=1.0",
+  "charset-normalizer>=3.3",
+  "pymupdf>=1.24",
+  "pdfplumber>=0.11",
+  "python-docx>=1.1",
+  "markdown-it-py>=3.0",
+  "razdel>=0.5",
+  "pymorphy3>=2.0",
+  "rapidfuzz>=3.9",
+  "aiolimiter>=1.1",
+  "tenacity>=8.2",
+  "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+pdf = ["typst>=0.12"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "reportlab>=4", "pypdf>=4"]
+
+[project.scripts]
+srs-audit = "srs_audit.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+srs_audit = ["reporting/templates/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
