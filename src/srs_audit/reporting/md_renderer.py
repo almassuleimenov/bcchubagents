@@ -42,6 +42,7 @@ MATRIX_STATUS = {
     "mismatch": "❌ расхождение",
     "missing_in_api": "❌ нет в API",
     "missing_in_business": "⚠️ нет в части А",
+    "risk": "⚠️ риск / пробел",
     "ambiguous": "⚠️ неоднозначно",
 }
 ROLE_RU = {
@@ -135,9 +136,12 @@ def build_context(report: AuditReport) -> dict:
     other_critical = [
         d for d in report.defects if d.severity in ("Blocker", "Critical") and d.category not in CRITICAL_GROUPS
     ]
+    # роли, у которых есть вопросы уровня P0 (Blocker), — первыми; внутри роли вопросы по приоритету
     roles = OrderedDict()
-    for role in ("PO", "BA", "SA", "QA", "InfoSec"):
-        qs = [q for q in report.questions if q.target_role == role]
+    role_order = ("PO", "BA", "SA", "QA", "InfoSec")
+    for role in sorted(role_order, key=lambda r: (min((q.priority for q in report.questions if q.target_role == r),
+                                                       default=9), role_order.index(r))):
+        qs = sorted((q for q in report.questions if q.target_role == role), key=lambda q: q.priority)
         if qs:
             roles[role] = qs
     det = [d for d in report.defects if d.source == "deterministic"]

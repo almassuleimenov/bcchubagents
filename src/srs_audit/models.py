@@ -9,6 +9,8 @@ function-declarations отвергает их. Поля, которые запо
 
 from __future__ import annotations
 
+import re
+
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -320,15 +322,21 @@ class SetPropertyCheck(BaseModel):
     comment: str
 
 
-MatrixStatus = Literal["consistent", "mismatch", "missing_in_api", "missing_in_business", "ambiguous"]
+MatrixStatus = Literal["consistent", "mismatch", "missing_in_api", "missing_in_business", "risk", "ambiguous"]
 
 
 class ApiMatrixRow(BaseModel):
+    # порядок полей = порядок генерации: сначала цитаты и довод, статус — последним, как вывод из довода
     aspect: str = Field(description="Что сверяем: метод, тип суммы, коды ошибок, чтение настроек ...")
     business_quote: str = Field(description="Дословная цитата из части А (БТ/UI/BPMN/критерии) или пусто")
     api_quote: str = Field(description="Дословная цитата из части B (REST API) или пусто")
-    status: MatrixStatus
-    comment: str
+    comment: str = Field(description="Сначала довод: что именно совпадает или расходится между частями A и B")
+    status: MatrixStatus = Field(
+        description="Вывод из comment: consistent — ТОЛЬКО если нет ни противоречия, ни пробела; "
+        "mismatch — расходятся типы, коды, методы, единицы или значения; missing_in_api — в API нет поля, "
+        "метода, эндпоинта или механизма, который нужен части A; missing_in_business — наоборот; "
+        "risk — неполнота или риск без прямого противоречия; ambiguous — нельзя однозначно сопоставить"
+    )
 
 
 FintechDomain = Literal[
@@ -433,10 +441,28 @@ class ClarifyingQuestion(BaseModel):
     question: str = Field(description="Конкретный вопрос-решение, на русском")
     related_defect_ids: list[str] = Field(description="ID дефектов (D-xxx), которые закрывает ответ")
     options: list[str] = Field(description="2–3 варианта решения")
-    recommended_option: str = Field(description="Рекомендуемый вариант и почему (кратко)")
+    recommended_index: int = Field(description="Индекс рекомендуемого варианта в options, с нуля (0 — первый)")
+    recommended_option: str = Field(description="Рекомендуемый вариант и почему (кратко), тот же, что options[recommended_index]")
     decision_impact: str = Field(description="Что изменится в разработке/тестировании в зависимости от ответа")
     before_text: str = Field(description="«Было»: ДОСЛОВНАЯ цитата проблемного места")
     after_ears_proposal: str = Field(description="«Стало»: правка в синтаксисе EARS (Когда/Если/Пока/Где ... система должна ...)")
+
+
+    def recommended_position(self) -> int:
+        """Какой вариант подсветить: явное «Вариант N» в тексте рекомендации (его видит читатель) →
+        recommended_index → точное/нечёткое совпадение текста варианта; -1, если не определить."""
+        n = len(self.options)
+        m = re.search(r"вариант\w*\s*(?:№\s*)?(\d+)", self.recommended_option, re.I)
+        if m and 1 <= int(m.group(1)) <= n:
+            return int(m.group(1)) - 1
+        if 0 <= self.recommended_index < n:
+            return self.recommended_index
+        from rapidfuzz import fuzz
+
+        rec = re.sub(r"\s+", " ", self.recommended_option).strip().lower()
+        scores = [fuzz.partial_ratio(re.sub(r"\s+", " ", o).strip().lower(), rec) for o in self.options]
+        best = max(range(n), key=scores.__getitem__, default=-1)
+        return best if best >= 0 and scores[best] >= 80 else -1
 
 
 class QuestionSet(BaseModel):
@@ -445,7 +471,8 @@ class QuestionSet(BaseModel):
 
 class Question(ClarifyingQuestion):
     question_id: str = ""
-    priority: int = 0
+    recommended_index: int = -1
+    priority: int = 3  # P0 (Blocker) … P3 (Minor): по самому серьёзному из закрываемых дефектов
     before_grounded: bool = False
     before_location: str = ""
 

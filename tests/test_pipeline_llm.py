@@ -156,7 +156,8 @@ def fake_llm(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
                 "questions": [
                     {"target_role": "PO", "question": "Какая дата операции определяет месяц расходов?",
                      "related_defect_ids": ids + ["D-999"],
-                     "options": ["Дата авторизации", "Дата проведения"], "recommended_option": "Дата авторизации",
+                     "options": ["Дата авторизации", "Дата проведения"], "recommended_index": 0,
+                     "recommended_option": "Дата авторизации",
                      "decision_impact": "Меняет тестовые данные на границе месяца.",
                      "before_text": "Месяц определяется по дате совершения покупки в Алматы.",
                      "after_ears_proposal": "Сервис расходов должен относить покупку к месяцу по дате авторизации "

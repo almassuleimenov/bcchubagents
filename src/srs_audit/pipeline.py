@@ -46,7 +46,7 @@ from .parsers import parse_document
 from .dedup import merge_duplicates
 from .graph import build_graph, summary_for_llm
 from .grounding import is_noop_fix, scrub_prompt_leaks, scrub_req_refs
-from .postfilter import split_false_positives
+from .postfilter import reconcile_matrix_status, split_false_positives
 from .preflight import run_preflight
 from .progress import Tracker
 from .scoring import compute_metrics
@@ -479,7 +479,9 @@ async def _questions_stage(defects: list[AuditDefect], g: Grounder, state: dict,
             continue
         for cq in part:
             res = g.ground(cq.before_text)
-            qs.append(Question(**cq.model_dump(), before_grounded=res.found, before_location=res.location if res.found else ""))
+            q = Question(**cq.model_dump(), before_grounded=res.found, before_location=res.location if res.found else "")
+            q.recommended_index = cq.recommended_position()
+            qs.append(q)
     return qs
 
 
@@ -488,9 +490,10 @@ def finalize_questions(questions: list[Question], defects: list[AuditDefect]) ->
     for q in questions:
         sev = [SEVERITY_ORDER[by_id[i].severity] for i in q.related_defect_ids if i in by_id]
         q.priority = min(sev) if sev else 3
-    # нумерация совпадает с порядком вывода: по ролям, внутри роли — по приоритету
+        q.recommended_index = q.recommended_position()  # «Вариант N» в тексте > индекс модели > текст
+    # нумерация совпадает с порядком вывода: сначала P0 (Blocker), затем P1…P3; внутри — по ролям
     roles = ["PO", "BA", "SA", "QA", "InfoSec"]
-    questions.sort(key=lambda q: (roles.index(q.target_role), q.priority))
+    questions.sort(key=lambda q: (q.priority, roles.index(q.target_role)))
     for i, q in enumerate(questions, start=1):
         q.question_id = f"Q-{i:02d}"
     return questions
@@ -655,6 +658,14 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
         dorder = list(offline_set.DOMAIN_OK_TEXT)
         domains.sort(key=lambda d: dorder.index(d.domain))
         matrix = list(cross_out.api_matrix) or offline_set.api_matrix(defects)
+        fixed = 0
+        for row in matrix:
+            new = reconcile_matrix_status(row.status, row.comment, row.api_quote)
+            if new != row.status:
+                row.status, fixed = new, fixed + 1  # type: ignore[assignment]
+        if fixed:
+            notes.append(f"Матрица A ↔ B: строк со статусом мягче собственного комментария — {fixed} "
+                         "(в комментарии описано расхождение или пробел); статус ужесточён кодом.")
     else:
         set_checks, domains, matrix = fallback_checks, fallback_domains, offline_set.api_matrix(defects)
 

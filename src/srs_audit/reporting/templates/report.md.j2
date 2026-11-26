@@ -218,11 +218,11 @@
 #### {{ role }} · {{ ROLE_RU[role] }}
 
 {% for q in qs %}
-**{{ q.question_id }}.** {{ q.question }} {% if q.priority < 4 %}<sub>(приоритет: {{ ["Blocker", "Critical", "Major", "Minor"][q.priority] }})</sub>{% endif %}
+**{{ q.question_id }}.** {{ q.question }} {% if q.priority is not none and 0 <= q.priority < 4 %}**`P{{ q.priority }}`** <sub>({{ ["Blocker", "Critical", "Major", "Minor"][q.priority] }})</sub>{% endif %}
 
 - **Варианты решения:**
 {% for o in q.options %}
-  {{ loop.index }}. {{ o }}
+  {{ loop.index }}. {{ o }}{% if loop.index0 == q.recommended_index %} — **рекомендуется**{% endif %}
 {% endfor %}
 - **Рекомендация:** {{ q.recommended_option }}
 - **Влияние на проект:** {{ q.decision_impact }}

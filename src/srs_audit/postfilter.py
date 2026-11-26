@@ -96,3 +96,54 @@ def split_false_positives(
         else:
             kept.append(d)
     return kept, dropped
+
+
+# ---------------------------------------------------------------------------
+# Матрица A ↔ B: статус должен следовать из комментария
+# ---------------------------------------------------------------------------
+# Модель нередко ставит «consistent» и тут же пишет в комментарии «GET … нарушает RFC 9110» или
+# «integer в запросе, string в ответе». Комментарий — довод, статус — вывод: если довод описывает
+# расхождение или пробел, статус «согласовано» ложен. Код только ужесточает статус, никогда не смягчает.
+
+_NO_PROBLEM = re.compile(
+    r"(?:нет|без|отсутству\w*|не\s+выявлен\w*|не\s+обнаружен\w*)\s+(?:каких-либо\s+)?"
+    r"(?:противореч\w*|расхожд\w*|несоответств\w*|пробел\w*|проблем\w*)"
+    r"|(?:противореч|расхожд|несоответств|пробел|проблем)\w*\s+(?:нет|не\s+выявлен\w*|не\s+обнаружен\w*)",
+    re.I,
+)
+_MISMATCH = re.compile(
+    r"противореч|не\s+совпада|расход[яи]т|расхожд|несоответств|наруша|вместо|подменя"
+    r"|\binteger\b[^.]{0,80}\bstring\b|\bstring\b[^.]{0,80}\binteger\b"
+    r"|\b200\b[^.]{0,80}\b(?:400|error)\b|\b403\b[^.]{0,80}\b404\b|\b404\b[^.]{0,80}\b403\b"
+    r"|тиын\w*[^.]{0,80}тенге|тенге[^.]{0,80}тиын",
+    re.I,
+)
+_MISSING = re.compile(
+    r"отсутству|отсутстви|не\s+(?:описан|указан|определ[её]н|предусмотрен|реализован|возвраща|переда)"
+    r"|недоступ|нет\s+(?:метод|пол|эндпоинт|endpoint|параметр|механизм|заголов|способ)",
+    re.I,
+)
+_IN_BUSINESS = re.compile(r"(?:в|из)\s+(?:част\w*\s+а\b|бизнес-?\w*|бт\b|ui\b|интерфейс\w*)", re.I)
+_RISK = re.compile(r"риск|неоднозначн|неясн|не\s+уточн|недостаточн|может\s+привести", re.I)
+
+
+_SEVERITY = {"consistent": 0, "ambiguous": 1, "risk": 2, "missing_in_business": 3, "missing_in_api": 3, "mismatch": 3}
+
+
+def _status_from_comment(comment: str, api_quote: str) -> str:
+    text = _NO_PROBLEM.sub(" ", comment or "")
+    if _MISMATCH.search(text):
+        return "mismatch"
+    if _MISSING.search(text):
+        return "missing_in_business" if _IN_BUSINESS.search(text) and api_quote else "missing_in_api"
+    if _RISK.search(text):
+        return "risk"
+    return "consistent"
+
+
+def reconcile_matrix_status(status: str, comment: str, api_quote: str = "") -> str:
+    """Статус строки матрицы, согласованный с её комментарием: только ужесточение, никогда не смягчение.
+    «consistent»/«ambiguous»/«risk» поднимаются до уровня, который описан в комментарии
+    (integer ↔ string — расхождение, а не риск); между missing и mismatch решает модель."""
+    derived = _status_from_comment(comment, api_quote)
+    return derived if _SEVERITY[derived] > _SEVERITY.get(status, 0) else status

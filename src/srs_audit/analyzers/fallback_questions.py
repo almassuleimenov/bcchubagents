@@ -145,4 +145,5 @@ def fallback_questions(defects: list[AuditDefect]) -> list[Question]:
                 before_location=ds[0].verified_location,
             )
         )
+        out[-1].recommended_index = out[-1].recommended_position()
     return out

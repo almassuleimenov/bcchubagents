@@ -13,7 +13,6 @@ import json
 import re
 from collections import Counter, defaultdict
 
-from rapidfuzz import fuzz
 
 from ..graph import NODE_KIND_RU, ORPHAN_RU
 from ..grounding import Grounder
@@ -28,7 +27,9 @@ from .md_renderer import KIND_RU, MATRIX_STATUS, ROLE_RU, SOURCE_RU
 
 SEVERITIES = ("Blocker", "Critical", "Major", "Minor")
 ROLES = ("PO", "BA", "SA", "QA", "InfoSec")
-MATRIX_TONE = {"consistent": "ok", "mismatch": "bad", "missing_in_api": "bad", "missing_in_business": "warn", "ambiguous": "warn"}
+MATRIX_TONE = {"consistent": "ok", "mismatch": "bad", "missing_in_api": "bad", "missing_in_business": "warn",
+               "risk": "warn", "ambiguous": "warn"}
+PRIORITY_RU = ("Blocker", "Critical", "Major", "Minor")
 DOMAIN_TONE = {"ok": ("ok", "OK"), "risk": ("warn", "риск"), "gap": ("bad", "пробел"), "n_a": ("na", "н/п")}
 SET_TONE = {"pass": ("ok", "соответствует"), "partial": ("warn", "частично"), "fail": ("bad", "не соответствует")}
 TRACE_TONE = {
@@ -243,19 +244,21 @@ def _cards(report: AuditReport, marked: set[str]) -> str:
     return "".join(out)
 
 
-def _recommended(options: list[str], rec: str) -> int:
-    best, idx = 0.0, -1
-    for i, o in enumerate(options):
-        sc = fuzz.partial_ratio(_norm(o).lower(), _norm(rec).lower())
-        if sc > best:
-            best, idx = sc, i
-    return idx if best >= 60 else -1
+def _recommended(q) -> int:
+    """Подсвечиваемый вариант: «Вариант N» в тексте рекомендации > recommended_index > совпадение текста."""
+    return q.recommended_position()
+
+
+def _prio(q) -> tuple[int, str]:
+    p = q.priority if q.priority is not None and 0 <= q.priority < len(PRIORITY_RU) else len(PRIORITY_RU) - 1
+    return p, PRIORITY_RU[p]
 
 
 def _jira(q) -> str:
     opts = "\n".join(f"- {o}" for o in q.options)
     rel = ", ".join(q.related_defect_ids) or "—"
-    return (f"**[{q.question_id}] {q.question}**\n\nРоль: {q.target_role} · приоритет {q.priority} · "
+    p, sev = _prio(q)
+    return (f"**[{q.question_id}] {q.question}**\n\nРоль: {q.target_role} · приоритет P{p} ({sev}) · "
             f"дефекты: {rel}\n\n**Варианты решения:**\n{opts}\n\n**Рекомендация:** {q.recommended_option}\n\n"
             f"**Цена неопределённости:** {q.decision_impact}\n\n**Было:**\n> {_norm(q.before_text)}\n\n"
             f"**Стало (EARS):**\n> {_norm(q.after_ears_proposal)}\n")
@@ -267,8 +270,10 @@ def _questions(report: AuditReport) -> tuple[str, str]:
     chips += [f'<button class="chip" data-role="{r}" aria-pressed="false"{" disabled" if not counts[r] else ""} '
               f'title="{e(ROLE_RU[r], quote=True)}">{r} <span class="n">{counts[r]}</span></button>' for r in ROLES]
     items = []
-    for q in sorted(report.questions, key=lambda q: (q.priority or 99, q.question_id)):
-        rec = _recommended(q.options, q.recommended_option)
+    # P0 (Blocker) всегда наверху: сортировка по приоритету, затем по номеру вопроса
+    for q in sorted(report.questions, key=lambda q: (_prio(q)[0], q.question_id)):
+        rec = _recommended(q)
+        p, sev = _prio(q)
         opts = "".join(
             f'<li class="{"opt rec" if i == rec else "opt"}">{e(o)}{"<span class=rec-k>рекомендуется</span>" if i == rec else ""}</li>'
             for i, o in enumerate(q.options)
@@ -277,7 +282,7 @@ def _questions(report: AuditReport) -> tuple[str, str]:
         loc = f'<span class="mut">{e(q.before_location)}</span>' if q.before_location else ""
         items.append(f"""
 <article class="q" data-role="{q.target_role}" id="q-{e(q.question_id)}">
-  <div class="q-h"><span class="prio" title="Приоритет">{q.priority or "—"}</span><span class="role">{q.target_role}</span>
+  <div class="q-h"><span class="prio p{p}" title="Приоритет P{p}: закрывает дефект уровня {sev}">P{p}<span class="prio-s">{sev}</span></span><span class="role">{q.target_role}</span>
     <span class="role-full">{e(ROLE_RU[q.target_role])}</span><span class="qid">{e(q.question_id)}</span></div>
   <h3 class="q-t">{e(q.question)}</h3>
   <div class="q-grid">
@@ -683,7 +688,11 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 .q{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px 18px}
 .q[hidden]{display:none}
 .q-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px}
-.prio{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:6px;background:var(--ink);color:var(--surface);font-weight:700;font-variant-numeric:tabular-nums}
+.prio{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;background:var(--na-bg);color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
+.prio-s{font-weight:500;font-size:11.5px}
+.prio.p0{background:var(--Blocker);color:var(--surface)}
+.prio.p1{background:color-mix(in srgb,var(--Critical) 16%,transparent);color:var(--Critical)}
+.prio.p2{background:color-mix(in srgb,var(--Major) 14%,transparent);color:var(--Major)}
 .role{font-weight:700}.role-full{color:var(--ink-3)}.qid{margin-left:auto;font-family:var(--mono);color:var(--ink-3)}
 .q-t{margin-top:10px;font-size:16px;line-height:1.4;max-width:90ch}
 .q-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:14px}
