@@ -30,21 +30,26 @@ from .grounding import normalize
 from .models import SEVERITY_ORDER, AuditDefect
 
 LINE_WINDOW = 3
+SAME_SPOT_WINDOW = 2  # «та же строка»: одна и та же цитата, увиденная разными слоями
 TEXT_SIMILARITY = 65
+SAME_SPOT_SIMILARITY = 60  # 45 склеивал «тип поля» с «поле не описано для ошибки» (замер на реальных отчётах)
 
 TOPICS: dict[str, re.Pattern[str]] = {
     name: re.compile(rx, re.I)
     for name, rx in {
         "error-contract": r"result\W{0,4}error|(?:\b200\b|2xx)[^.]{0,80}(?:ошибк|error)|(?:ошибк\w*|error)[^.]{0,80}(?:\b200\b|2xx)",
         "get-mutation": r"\bget\b[^.]{0,80}(?:сохран|измен\w*\s+состояни|мутир|безопасн|кэшир)"
-        r"|(?:сохран\w*|изменени\w*\s+состояни\w*)[^.]{0,80}\bget\b",
+        r"|(?:сохран\w*|изменени\w*\s+состояни\w*|изменяющ\w*|мутирующ\w*)[^.]{0,120}\bget\b",
         "status-403-404": r"\b403\b[^.]{0,160}\b404\b|\b404\b[^.]{0,160}\b403\b|чуж\w*\s+карт",
         "type-mismatch": r"\b(?:integer|string|boolean|number|int|float)\b[^.]{0,140}\b(?:integer|string|boolean|number|int|float)\b"
         r"|несоответстви\w*\s+тип|тип\w*\s+данных",
         "money-units": r"тиын|минорн\w*\s+единиц",
         "content-type-body": r"content-type[^.]{0,160}тел|тел\w*[^.]{0,120}content-type",
-        "undescribed-status": r"(?:не описан|не приведен|упоминается, но|отсутстви\w*\s+пример\w*)[^.]{0,80}\b[1-5]\d\d\b"
-        r"|\b[1-5]\d\d\b[^.]{0,80}(?:не описан|упоминается, но|не приведен|отсутстви\w*\s+пример)",
+        "undescribed-status": r"(?:не описан|не приведен|упоминается|отсутстви\w*\s+(?:пример|описани)\w*)[^.]{0,80}\b[1-5]\d\d\b"
+        r"|\b[1-5]\d\d\b[^.]{0,80}(?:не описан|упоминается|не приведен|отсутств\w*\s+(?:пример|описани)|не определ)",
+        "env-url": r"\bprod\b|продуктивн\w*\s+(?:сред|контур)|(?:адрес|url)\w*[^.]{0,40}сред\w*|сред\w*[^.]{0,40}(?:адрес|url)",
+        "read-endpoint": r"(?:чтени\w*|получени\w*|чита\w*)[^.]{0,60}(?:настро|порог)[^.]{0,80}(?:метод|api|эндпоинт)"
+        r"|нет\s+(?:метода|эндпоинта)\s+(?:для\s+)?(?:чтени|получени)",
         "missing-value": r"не заполнен|отсутстви\w*\s+ссылк|пуст\w*\s+(?:пол|значени)",
         "timezone": r"\butc\b|часов\w*\s+пояс|time\s?zone|asia/almaty",
         "race": r"гонк|race condition|параллельн\w*\s+(?:обработк|событи|запрос|сохранени)|конкурентн",
@@ -52,12 +57,14 @@ TOPICS: dict[str, re.Pattern[str]] = {
         "atomicity": r"атомарн|самостоятельн\w*\s+утвержд",
         "passive": r"пассив",
         "vague": r"расплывчат|открыт\w*\s+перечн|«и далее»|и т\.\s?д",
-        "acceptance-trace": r"критери\w*\s+при[её]мки[^.]{0,60}(?:ожида(?:ет|ют)\b|противореч)"
+        "acceptance-trace": r"критери\w*\s+при[её]мки[^.]{0,160}(?:ожида(?:ет|ют)\b|противореч)"
+        r"|противореч\w*[^.]{0,80}критери\w*\s+при[её]мки"
         r"|противореч\w*[^.]{0,80}критери\w*\s+при[её]мки",
         "pii": r"\bpan\b|персональн\w*\s+данн|pci\s?dss",
         "sensitive-query": r"query-строк|в\s+url|query-параметр",
         "boundary": r"граничн\w*\s+(?:значени|случа|сценари)",
         "rounding": r"округлен",
+        "nfr-measure": r"перцентил|p9[059]\b|услови\w*\s+измерени|без\s+условий\s+измерени",
         "approval": r"согласован|подпис",
         "ranking": r"приоритет\w*\s*/?\s*стабильн|ранжирован",
     }.items()
@@ -122,10 +129,17 @@ def _similar(a: AuditDefect, b: AuditDefect) -> int:
     )
 
 
+# дефекты формы (неатомарность, оформление, трассируемость, заглушка) не поглощают дефекты содержания
+FORM_CATEGORIES = {"singularity", "conformity", "traceability", "placeholder"}
+
+
 def vetoed(a: AuditDefect, b: AuditDefect, sa: Signature, sb: Signature) -> bool:
     """Явно разные проблемы — сливать нельзя."""
     if a.source == b.source == "deterministic":
-        return True  # детерминированный слой не дублирует сам себя: разные правила/места — разные дефекты
+        # одно правило в разных местах — разные дефекты (каждое место надо править);
+        # два РАЗНЫХ правила про одну тему и один HTTP-код/поле — одна проблема
+        overlap = (sa.codes & sb.codes) or (sa.fields & sb.fields)
+        return a.rule_id == b.rule_id or not (sa.topics & sb.topics and overlap)
     if sa.fields and sb.fields and sa.fields.isdisjoint(sb.fields):
         return True
     if sa.topics and sb.topics and sa.topics.isdisjoint(sb.topics):
@@ -141,13 +155,28 @@ def is_duplicate(a: AuditDefect, b: AuditDefect, sa: Signature | None = None, sb
     shared_topic = bool(sa.topics & sb.topics)
     if shared_topic and _near(a, b):
         return True
+    # «то же место»: ±2 строки и то же требование — один дефект, даже если слои по-разному назвали
+    # категорию/серьёзность. Тема известна только у одного (у LLM-формулировки её часто нет) —
+    # достаточно умеренно похожего текста; вето по полям/темам уже проверено выше.
+    same_req = a.req_id == b.req_id and a.req_id not in ("SET", "")
+    form_only = {a.category, b.category} & FORM_CATEGORIES and a.category != b.category
+    if same_req and not form_only and abs(a.line_start - b.line_start) <= SAME_SPOT_WINDOW:
+        if not (sa.topics and sb.topics) and _similar(a, b) >= SAME_SPOT_SIMILARITY:
+            return True
     # без общей темы — только при перекрытии цитат / одном требовании и похожем тексте
     if _near(a, b, window=0) and _similar(a, b) >= TEXT_SIMILARITY:
         return True
     if _near(a, b):
         return False
+    # свойство контракта метода (GET для изменения, 200+ERROR, нет Prod-URL, нет метода чтения) у метода
+    # одно, где бы его ни процитировали; разные эндпоинты уже разведены вето по непересекающимся полям/путям
+    if sa.topics & sb.topics & CONTRACT_TOPICS:
+        return True
     # одна проблема, процитированная из разных мест документа
     return shared_topic and bool((sa.fields & sb.fields) or (sa.codes & sb.codes) or (sa.refs & sb.refs))
+
+
+CONTRACT_TOPICS = {"get-mutation", "error-contract", "env-url", "read-endpoint", "content-type-body"}
 
 
 def _richness(d: AuditDefect) -> tuple:

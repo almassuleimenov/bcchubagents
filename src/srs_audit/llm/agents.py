@@ -188,7 +188,25 @@ def _defect_checks(defects: list, prefix: str) -> list[_Check]:
 
 # thinking="low": на этой задаче качество не падает, а ответ приходит в разы быстрее;
 # timeout — на один HTTP-запрос, дальше срабатывают FallbackModel и ретраи.
-SETTINGS = ModelSettings(temperature=0.1, max_tokens=16000, thinking="low", timeout=REQUEST_TIMEOUT_S)
+THINKING_BUDGET_FAST = 1024  # нарезка и пакетная проверка требований: задача «по образцу»
+THINKING_BUDGET_DEEP = 2048  # проверка набора, трассировка приёмки, синтез вопросов
+
+
+def _settings(budget: int, effort: str = "low") -> ModelSettings:
+    """Ограничиваем скрытые токены размышления: для Gemini — точный бюджет (google_thinking_config
+    имеет приоритет над общим полем), для остальных провайдеров — общий уровень ``thinking``."""
+    return ModelSettings(
+        temperature=0.1,
+        max_tokens=16000,
+        thinking=effort,  # type: ignore[typeddict-item]
+        google_thinking_config={"thinking_budget": budget},  # type: ignore[typeddict-unknown-key]
+        # штатно: нарезка и пакеты 11–31 с, CrossCheck до ~60 с; зависший запрос уходит на резервную модель
+        timeout=REQUEST_TIMEOUT_S if budget >= THINKING_BUDGET_DEEP else FAST_TIMEOUT_S,
+    )
+
+
+FAST_TIMEOUT_S = 60.0
+SETTINGS = _settings(THINKING_BUDGET_FAST)
 
 
 @dataclass
@@ -271,7 +289,7 @@ def build_agents(model: Any) -> AgentSuite:
         deps_type=AgentDeps,
         instructions=prompts.CROSSCHECK,
         retries=4,
-        model_settings=SETTINGS,
+        model_settings=_settings(THINKING_BUDGET_DEEP),
         name="CrossCheckFinTechAgent",
     )
 
@@ -304,7 +322,7 @@ def build_agents(model: Any) -> AgentSuite:
         deps_type=AgentDeps,
         instructions=prompts.CONSISTENCY,
         retries=4,
-        model_settings=ModelSettings(temperature=0.1, max_tokens=16000, thinking="medium", timeout=REQUEST_TIMEOUT_S),
+        model_settings=_settings(THINKING_BUDGET_DEEP, "medium"),
         name="CrossCheckFinTechAgent.consistency",
     )
 
@@ -332,7 +350,7 @@ def build_agents(model: Any) -> AgentSuite:
         deps_type=AgentDeps,
         instructions=prompts.QUESTIONS,
         retries=4,
-        model_settings=SETTINGS,
+        model_settings=_settings(THINKING_BUDGET_DEEP),
         name="QuestionSynthesizerAgent",
     )
 

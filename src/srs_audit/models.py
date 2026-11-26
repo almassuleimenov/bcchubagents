@@ -366,6 +366,44 @@ class CrossCheckResult(BaseModel):
     fintech_domains: list[FintechDomainCheck] = Field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# Граф трассировки (graph.py, без LLM)
+# ---------------------------------------------------------------------------
+
+GraphNodeKind = Literal["requirement", "acceptance", "ui_field", "operation", "endpoint", "param", "status"]
+EdgeOrigin = Literal["EXTRACTED", "INFERRED"]
+
+
+class GraphNode(BaseModel):
+    node_id: str
+    kind: GraphNodeKind
+    label: str
+    line: int = 0
+    req_id: str = ""  # требование отчёта, из которого узел извлечён
+
+
+class GraphEdge(BaseModel):
+    src: str
+    dst: str
+    relation: str  # verifies, references, maps_to, implements, has_param, returns, has_example, type_mismatch
+    origin: EdgeOrigin
+    note: str = ""
+
+
+class GraphOrphan(BaseModel):
+    node_id: str
+    kind: str  # requirement_without_acceptance, ui_field_without_api, operation_without_endpoint, status_without_example, status_undescribed
+    label: str
+    line: int = 0
+    explanation: str
+
+
+class TraceGraph(BaseModel):
+    nodes: list[GraphNode] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+    orphans: list[GraphOrphan] = Field(default_factory=list)
+
+
 TraceVerdict = Literal["consistent", "contradiction", "not_covered", "ambiguous"]
 
 
@@ -491,6 +529,7 @@ class AuditReport(BaseModel):
     fintech_domains: list[FintechDomainCheck] = Field(default_factory=list)
     api_endpoints: list[APIEndpointFact] = Field(default_factory=list)
     acceptance_traces: list[AcceptanceTrace] = Field(default_factory=list)
+    trace_graph: TraceGraph = Field(default_factory=TraceGraph)
     questions: list[Question] = Field(default_factory=list)
     metrics: QualityMetrics = Field(default_factory=QualityMetrics)
     citation: CitationStats = Field(default_factory=CitationStats)

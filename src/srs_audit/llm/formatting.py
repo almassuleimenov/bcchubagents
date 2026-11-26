@@ -23,7 +23,8 @@ def numbered_document(doc: ParsedDocument) -> str:
 def requirement_lines(reqs: list[Requirement]) -> str:
     return "\n".join(
         f"{r.req_id} [{r.source_id or '—'}] ({r.kind}, стр. {r.line_start}"
-        f"{'–' + str(r.line_end) if r.line_end != r.line_start else ''}): {r.text}"
+        f"{'–' + str(r.line_end) if r.line_end != r.line_start else ''}"
+        f"{', раздел «' + r.section_path.split('›')[-1].strip() + '»' if r.section_path else ''}): {r.text}"
         for r in reqs
     )
 

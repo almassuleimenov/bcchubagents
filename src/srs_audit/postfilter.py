@@ -22,6 +22,20 @@ ARITH_CLAIM = re.compile(
 )
 CURL_G = re.compile(r"(?<![\w-])-G\b|--get\b")
 CURL_DATA_CLAIM = re.compile(r"--data|(?<![\w-])-d\b|\bdata\b|тел[оау]\b|телом|body", re.I)
+# «Лишнее проектное решение / перенесите в раздел архитектуры» — претензия к уместности описания
+_DESIGN_WORDS = r"(?:архитектур|дизайн|\bui\b|\bux\b|интерфейс|экран|макет|bpmn|процесс|sequence|последовательност|диаграмм|проектировани)"
+DESIGN_CLAIM = re.compile(
+    r"лишн\w*\s+проектн\w*\s+решени|проектн\w*\s+решени\w*[^.]{0,80}(?:вместо|а не|не\s+требовани)"
+    r"|implementation[- ]free|(?:не является|а не)\s+требовани\w*[^.]{0,60}" + _DESIGN_WORDS
+    + r"|" + _DESIGN_WORDS + r"\w*[^.]{0,80}(?:не является|а не)\s+требовани"
+    r"|(?:перемест|перенест|перенес|вынест|вынес)\w*[^.]{0,80}(?:раздел|документ|приложени|спецификаци)\w*[^.]{0,40}" + _DESIGN_WORDS,
+    re.I,
+)
+# Разделы, само назначение которых — описывать архитектуру, UI, процесс или взаимодействие
+DESCRIPTIVE_SECTION = re.compile(
+    r"архитектур|дизайн|\bui\b|\bux\b|интерфейс|экран|макет|bpmn|sequence|последовательност|диаграмм|схем\w*\s+процесс",
+    re.I,
+)
 # если претензия на самом деле про семантику GET (изменение состояния) — это не ложное срабатывание
 GET_SEMANTICS = re.compile(r"сохран|измен\w*\s+состояни|мутир|небезопасн|кэшир", re.I)
 
@@ -45,8 +59,14 @@ def arithmetic_is_consistent(text: str) -> bool:
     return False
 
 
-def false_positive_reason(d: AuditDefect) -> str | None:
-    """Причина отбросить дефект или ``None``. Применяется к находкам LLM."""
+def false_positive_reason(d: AuditDefect, section_path: str = "") -> str | None:
+    """Причина отбросить дефект или ``None``. Применяется к находкам LLM.
+
+    ``section_path`` — раздел требования, к которому относится дефект (путь заголовков).
+    """
+    if section_path and DESCRIPTIVE_SECTION.search(section_path) and DESIGN_CLAIM.search(f"{d.reasoning} {d.recommendation}"):
+        last = section_path.split("›")[-1].strip()
+        return f"описание архитектуры/UI/процесса стоит в своём разделе («{last}») — это не лишнее проектное решение"
     if is_noop_fix(d.exact_quote, d.recommendation):
         return "предложенная правка дословно совпадает с исходным текстом (before == after)"
     # считаем только по цитате критерия: в reasoning модель пишет свой (возможно, ошибочный) расчёт
@@ -63,10 +83,14 @@ def false_positive_reason(d: AuditDefect) -> str | None:
     return None
 
 
-def split_false_positives(defects: list[AuditDefect]) -> tuple[list[AuditDefect], list[tuple[AuditDefect, str]]]:
+def split_false_positives(
+    defects: list[AuditDefect], sections: dict[str, str] | None = None
+) -> tuple[list[AuditDefect], list[tuple[AuditDefect, str]]]:
+    """``sections`` — {req_id: section_path} для проверки «уместности» описательных разделов."""
+    sections = sections or {}
     kept, dropped = [], []
     for d in defects:
-        why = false_positive_reason(d) if d.source != "deterministic" else None
+        why = false_positive_reason(d, sections.get(d.req_id, "")) if d.source != "deterministic" else None
         if why:
             dropped.append((d, why))
         else:

@@ -92,7 +92,7 @@ def test_same_field_type_mismatch_cited_far_apart_merged():
     assert len(out) == 1 and out[0].severity == "Critical" and out[0].merged_count == 2
 
 
-def test_deterministic_findings_never_merge_with_each_other():
+def test_deterministic_findings_of_unrelated_rules_never_merge():
     p1 = mk(source="deterministic", rule_id="LEX-PASSIVE", line_start=38, line_end=38, req_id="REQ-009",
             reasoning="Пассивная конструкция «определяется» без субъекта.")
     p2 = mk(source="deterministic", rule_id="LEX-PASSIVE", line_start=40, line_end=40, req_id="REQ-011",
@@ -221,3 +221,143 @@ def test_postfilter_never_touches_deterministic_findings():
     det = mk(source="deterministic", rule_id="X", recommendation="Заменить «a b» на «a b».", exact_quote="a b")
     kept, dropped = split_false_positives([det])
     assert kept == [det] and not dropped
+
+
+# ---------------------------------------------------------------------------
+# Остаточные дубли «на той же строке» и описательные разделы
+# ---------------------------------------------------------------------------
+
+
+def test_same_spot_duplicates_merged_across_categories_and_severities():
+    # Prod URL: правило (completeness/Major) + LLM (другая формулировка, другая категория)
+    rule = mk(source="deterministic", rule_id="API-ENV-MISSING", req_id="REQ-026", line_start=108, line_end=108,
+              severity="Major", category="completeness", exact_quote="Request URL | Dev: /alerts/saveLimit . Prod: —",
+              reasoning="Не указан адрес для среды «Prod»: контракт нельзя развернуть/протестировать в целевом контуре.",
+              standard_ref="IEEE 830 §4.3.3 complete")
+    llm = mk(source="llm_quality", req_id="REQ-026", line_start=109, line_end=109, severity="Critical",
+             category="verifiability", exact_quote="Request URL | Dev: /alerts/saveLimit . Prod: —",
+             reasoning="Для продуктивной среды (Prod) не указан URL конечной точки — тестировщики не смогут проверить релиз.",
+             standard_ref="ISO/IEC/IEEE 29148 §5.2.5 verifiable")
+    # 201: «упоминается, однако не описан» (без слова «но»)
+    s201a = mk(source="deterministic", rule_id="API-STATUS-UNDESCRIBED", req_id="REQ-041", line_start=151, line_end=151,
+               reasoning="Код ответа 201 упоминается, но не описан в разделе статусов (нет условия и тела ответа).")
+    s201b = mk(source="llm_quality", req_id="REQ-041", line_start=151, line_end=151, category="api_contract",
+               severity="Minor",
+               reasoning="Упоминается код 201 Created как вариант успешного ответа, однако описание этого кода отсутствует.")
+    out = merge_duplicates([rule, llm, s201a, s201b])
+    assert len(out) == 2
+    prod = next(d for d in out if d.line_start in (108, 109))
+    assert prod.severity == "Critical" and prod.merged_count == 2
+    assert "IEEE 830 §4.3.3 complete" in prod.standard_ref and "29148 §5.2.5 verifiable" in prod.standard_ref
+    code = next(d for d in out if d.line_start == 151)
+    assert code.severity == "Major" and code.merged_count == 2
+
+
+def test_same_spot_rule_does_not_merge_different_issue_of_same_requirement():
+    types = mk(source="deterministic", rule_id="API-TYPE-MISMATCH", req_id="REQ-044", line_start=156, line_end=156,
+               exact_quote="amount | string | При успехе",
+               reasoning="Поле «amount» в запросе имеет тип integer (стр. 143), а в ответе — string.",
+               recommendation="Привести тип amount в ответе к integer, как в запросе.")
+    presence = mk(source="llm_quality", req_id="REQ-044", line_start=156, line_end=156,
+                  exact_quote="amount | string | При успехе",
+                  reasoning="Описание поля 'amount' указывает, что оно присутствует 'При успехе', но не уточняет его "
+                            "поведение при неуспешном ответе.",
+                  recommendation="Указать, возвращается ли amount при ошибке и с каким значением.")
+    assert len(merge_duplicates([types, presence])) == 2
+
+
+DESIGN_FP = dict(
+    source="llm_quality", category="feasibility",
+    reasoning="Это описание архитектуры и последовательности вызовов, а не требование: лишнее проектное решение.",
+    recommendation="Переместить описание в раздел архитектуры / технического проектирования.",
+)
+
+
+@pytest.mark.parametrize("section", [
+    "Документ › Часть A › Архитектура решения",
+    "Документ › Часть A › Дизайн процесса UI",
+    "Документ › Требования к изменениям › BPMN схема процесса",
+    "Документ › Часть A › Sequence Diagram",
+])
+def test_design_claim_dropped_in_descriptive_sections(section):
+    d = mk(req_id="REQ-005", **DESIGN_FP)
+    kept, dropped = split_false_positives([d], {"REQ-005": section})
+    assert not kept and "не лишнее проектное решение" in dropped[0][1]
+
+
+def test_design_claim_kept_in_functional_section_and_real_defects_kept_in_design_sections():
+    d = mk(req_id="REQ-009", **DESIGN_FP)
+    assert false_positive_reason(d, "Документ › Требования к изменениям › Функциональные требования") is None
+    ambiguity = mk(req_id="REQ-005", reasoning="Не указано, какой сервис хранит признак отправки push.",
+                   recommendation="Указать владельца признака отправки.")
+    assert false_positive_reason(ambiguity, "Документ › Часть A › Архитектура решения") is None
+
+
+def test_two_different_rules_on_same_http_code_merge_but_same_rule_does_not():
+    undescribed = mk(source="deterministic", rule_id="API-STATUS-UNDESCRIBED", req_id="REQ-041", line_start=151,
+                     line_end=151, category="api_contract",
+                     reasoning="Код ответа 201 упоминается, но не описан в разделе статусов.")
+    contradiction = mk(source="deterministic", rule_id="API-STATUS-CONTRADICTION", req_id="REQ-041", line_start=162,
+                       line_end=162, category="completeness",
+                       reasoning="В тексте упоминаются коды 201 и 404, но в разделе статусов они не описаны.")
+    assert len(merge_duplicates([undescribed, contradiction])) == 1
+    tz38 = mk(source="deterministic", rule_id="FIN-TZ-IMPLICIT", req_id="REQ-009", line_start=38, line_end=38,
+              reasoning="Время задано выражением «в Алматы» без явного часового пояса (UTC+5).")
+    tz64 = tz38.model_copy(update={"req_id": "REQ-020", "line_start": 64, "line_end": 64})
+    assert len(merge_duplicates([tz38, tz64])) == 2  # одно правило в двух местах — два места правки
+
+
+def test_form_defect_does_not_swallow_content_defect_on_same_line():
+    atomic = mk(source="deterministic", rule_id="STRUCT-NON-ATOMIC", req_id="REQ-010", line_start=39, line_end=39,
+                category="singularity", severity="Minor",
+                reasoning="Требование Ф-3 объединяет 2 самостоятельных утверждения: их нельзя независимо проверить.")
+    race_llm = mk(source="llm_quality", req_id="REQ-010", line_start=39, line_end=39, category="consistency",
+                  reasoning="Ограничение «один push» не защищено от гонки при одновременном поступлении двух событий.")
+    race_rule = mk(source="deterministic", rule_id="FIN-RACE", req_id="REQ-010", line_start=39, line_end=39,
+                   category="fintech", reasoning="Ограничение «максимум один» не подкреплено механизмом: при "
+                   "параллельной обработке двух событий возможна гонка.")
+    out = merge_duplicates([atomic, race_llm, race_rule])
+    assert len(out) == 2
+    assert next(d for d in out if d.category != "singularity").merged_count == 2
+
+
+def test_nfr_measurement_conditions_from_rule_and_llm_merged():
+    rule = mk(source="deterministic", rule_id="NFR-NO-CONDITIONS", req_id="REQ-015", line_start=46, line_end=46,
+              category="verifiability",
+              reasoning="Показатель времени задан без условий измерения: нет перцентиля (p95/p99), нагрузки и окна.")
+    llm = mk(source="llm_quality", req_id="REQ-015", line_start=46, line_end=46, category="verifiability",
+             reasoning="В REQ-015 не указаны условия измерения времени доставки (перцентили p95/p99 и нагрузка).")
+    assert len(merge_duplicates([rule, llm])) == 1
+
+
+def test_rule_vs_acceptance_contradiction_cited_from_both_sides_merged():
+    rule_side = mk(source="llm_crosscheck", req_id="REQ-009", line_start=38, line_end=38, category="consistency",
+                   severity="Blocker", exact_quote="Ф-2. Месяц определяется по дате совершения покупки в Алматы.",
+                   reasoning="Пункт REQ-009 устанавливает, что месяц расходов определяется по дате совершения покупки. "
+                             "Однако во втором критерии приёмки (стр. 64) указано, что покупка от 31 января, проведённая "
+                             "1 февраля, увеличивает «февральский счётчик», что противоречит REQ-009.")
+    criterion_side = mk(source="llm_crosscheck", req_id="REQ-020", line_start=64, line_end=64, category="consistency",
+                        severity="Blocker", exact_quote="Покупка 31 января в 23:58 на 4 000 ₸",
+                        reasoning="Критерий приёмки ожидает: Февральский счётчик вырос на 4 000 ₸. По правилам документа "
+                                  "(REQ-009 (Ф-2)) получается: январский счётчик вырос на 4 000 ₸.")
+    out = merge_duplicates([rule_side, criterion_side])
+    assert len(out) == 1 and out[0].merged_count == 2
+
+
+def test_contract_property_merged_wherever_cited_but_not_across_endpoints():
+    rule = mk(source="deterministic", rule_id="API-GET-MUTATION", req_id="REQ-024", line_start=104, line_end=104,
+              category="api_contract", severity="Blocker", exact_quote="REST type | GET",
+              reasoning="Операция изменения состояния (/alerts/saveLimit) объявлена методом GET.")
+    llm_set = mk(source="llm_quality", req_id="SET", line_start=104, line_end=104, category="api_contract",
+                 severity="Blocker", exact_quote="**REST type** | GET",
+                 reasoning="Операция сохранения настроек является изменяющей, однако объявлена с использованием GET.")
+    llm_far = mk(source="llm_quality", req_id="REQ-017", line_start=52, line_end=52, category="correctness",
+                 severity="Blocker", exact_quote="Приложение читает и сохраняет настройки через дочерний документ",
+                 reasoning="Метод сохранения настроек ошибочно объявлен с типом GET, хотя выполняет изменение данных.")
+    out = merge_duplicates([rule, llm_set, llm_far])
+    assert len(out) == 1 and out[0].merged_count == 3
+
+    other = mk(source="llm_quality", req_id="REQ-090", line_start=300, line_end=300, category="api_contract",
+               exact_quote="REST type | GET",
+               reasoning="Операция удаления (/cards/block) объявлена методом GET и изменяет состояние.")
+    assert len(merge_duplicates([rule, other])) == 2  # другой эндпоинт — другой дефект

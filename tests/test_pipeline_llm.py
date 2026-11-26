@@ -277,3 +277,19 @@ def test_cli_pdf_export(sample_md, tmp_path):
     assert res.exit_code == 1
     pdf = out.with_suffix(".pdf")
     assert pdf.exists() and pdf.read_bytes()[:4] == b"%PDF"
+
+
+async def test_html_dashboard_self_contained(sample_md, mock_opts):
+    from srs_audit.reporting.html_renderer import render_html
+
+    report = await run_audit(sample_md, mock_opts)
+    page = render_html(report)
+    # автономность: ни одного внешнего ресурса
+    assert not re.search(r'<(?:script|link|img)[^>]+(?:src|href)="https?://', page)
+    # 4 вкладки, корректурные пометки на полях, карточки на каждый дефект, граф и вопросы
+    assert page.count('role="tab"') == 4 and page.count('role="tabpanel"') == 4
+    assert all(f'id="card-{d.defect_id}"' in page for d in report.defects)
+    assert "<mark " in page and 'class="pin ' in page
+    assert 'id="graph-data"' in page and "Разрывы трассировки" in page
+    assert "Копировать для Jira" in page and "Стало (EARS)" in page
+    assert "Grounded" in page and report.passport.agent_version in page

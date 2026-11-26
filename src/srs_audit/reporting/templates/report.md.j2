@@ -104,6 +104,22 @@
 В документе не найдено описание REST API — сверка не применима.
 {% endif %}
 
+{% if r.trace_graph.nodes %}
+### 4.2a. Граф трассировки
+
+{{ graph_counts }}. Связей: {{ r.trace_graph.edges | length }} (записаны в документе — {{ graph_extracted }}, выведены кодом — {{ r.trace_graph.edges | length - graph_extracted }}).
+
+{% if r.trace_graph.orphans %}
+| Разрыв трассировки | Узел | Строка | Пояснение |
+| :--- | :--- | :--- | :--- |
+{% for o in r.trace_graph.orphans %}
+| {{ ORPHAN_RU[o.kind] }} | {{ o.label | cell(120) }} | {{ o.line }} | {{ o.explanation | cell(200) }} |
+{% endfor %}
+{% else %}
+Разрывов трассировки не найдено: у каждого правила есть критерий приёмки, у каждого поля экрана — параметр API.
+{% endif %}
+
+{% endif %}
 {% if r.fintech_domains %}
 ### 4.3. Финтех-аудит по 7 доменам (профиль kz-banking)
 

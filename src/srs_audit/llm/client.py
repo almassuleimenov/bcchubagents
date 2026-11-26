@@ -33,7 +33,7 @@ DEFAULT_GEMINI = "gemini-2.5-flash"
 GEMINI_CHAIN = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
 DEFAULT_OPENAI = "gpt-4o-mini"
 DEFAULT_ANTHROPIC = "claude-haiku-4-5"
-REQUEST_TIMEOUT_S = 180.0  # таймаут одного HTTP-запроса к модели
+REQUEST_TIMEOUT_S = 90.0  # таймаут одного запроса: штатный ответ ≤ 60 с, зависший запрос быстрее уходит на резервную модель
 AGENT_RETRY_BUDGET_S = 300.0  # общий бюджет повторов одного агента
 MAX_ATTEMPTS = 3
 _ORIGINAL_KEYS: set[str] = set()
@@ -314,7 +314,7 @@ class LLMRuntime:
         *,
         cache: SQLiteCache | None = None,
         rpm: int | None = None,
-        concurrency: int = 4,
+        concurrency: int = 8,  # все независимые вызовы этапа идут разом; от 429 защищает AsyncLimiter
         max_attempts: int = MAX_ATTEMPTS,
     ) -> None:
         self.model = model

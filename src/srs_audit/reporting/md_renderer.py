@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from ..graph import NODE_KIND_RU, ORPHAN_RU
 from ..models import (
     CATEGORY_RU,
     FINTECH_DOMAIN_RU,
@@ -116,6 +117,13 @@ def _req_rows(report: AuditReport) -> list[dict]:
     return rows
 
 
+def graph_counts(report: AuditReport) -> str:
+    from collections import Counter
+
+    c = Counter(n.kind for n in report.trace_graph.nodes)
+    return "Узлов: " + ", ".join(f"{NODE_KIND_RU[k]} — {v}" for k, v in c.items())
+
+
 def build_context(report: AuditReport) -> dict:
     m = report.metrics
     set_defects = [d for d in report.defects if d.scope == "set" or d.req_id == "SET"]
@@ -161,6 +169,9 @@ def build_context(report: AuditReport) -> dict:
         FINTECH_DOMAIN_RU=FINTECH_DOMAIN_RU,
         MATRIX_STATUS=MATRIX_STATUS,
         TRACE_STATUS=TRACE_STATUS,
+        ORPHAN_RU=ORPHAN_RU,
+        graph_counts=graph_counts(report),
+        graph_extracted=sum(e.origin == "EXTRACTED" for e in report.trace_graph.edges),
         ROLE_RU=ROLE_RU,
         KIND_RU=KIND_RU,
         SOURCE_RU=SOURCE_RU,

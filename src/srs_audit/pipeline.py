@@ -44,6 +44,7 @@ from .models import (
 )
 from .parsers import parse_document
 from .dedup import merge_duplicates
+from .graph import build_graph, summary_for_llm
 from .grounding import is_noop_fix, scrub_prompt_leaks, scrub_req_refs
 from .postfilter import split_false_positives
 from .preflight import run_preflight
@@ -68,6 +69,7 @@ class AuditOptions:
     notes: list[str] = field(default_factory=list)
     model_override: Any = None  # готовая pydantic-ai Model (тесты: FunctionModel)
     rpm: int | None = None  # лимит запросов в минуту (по умолчанию SRS_RPM или 8 — Free Tier Gemini)
+    timings: dict[str, float] = field(default_factory=dict)  # агент → секунды (критический путь в паспорте)
 
 
 def _say(opts: AuditOptions, msg: str) -> None:
@@ -85,14 +87,17 @@ async def _tracked(opts: AuditOptions, key: str, label: str, runtime, agent, pro
     tr = opts.tracker
     if tr:
         tr.start(key, label)
+    t0 = time.perf_counter()
     try:
         out = await run_agent(
             runtime, agent, prompt, deps, out_type, cache, on_retry=(lambda t: tr.note(key, t)) if tr else None
         )
     except Exception as exc:
+        opts.timings[key] = time.perf_counter() - t0
         if tr:
             tr.finish(key, "failed", describe_error(exc))
         raise
+    opts.timings[key] = time.perf_counter() - t0
     if tr:
         bits = []
         if deps.stats.retries_issued:
@@ -351,6 +356,8 @@ async def _analysis_stage(
         prompt = (
             f"ДОКУМЕНТ «{doc.title}»:\n{numbered}\n\nТРЕБОВАНИЯ:\n{requirement_lines(reqs)}\n\n"
             f"РЕЕСТР API:\n{api}\n\nФАКТЫ:\n{facts}\n\n"
+            f"ГРАФ ТРАССИРОВКИ (построен кодом; EXTRACTED — связь записана в документе, INFERRED — выведена):\n"
+            f"{summary_for_llm(state['graph']) if state.get('graph') else '(нет)'}\n\n"
             f"УЖЕ НАЙДЕНО ДЕТЕРМИНИРОВАННЫМ СЛОЕМ (не дублировать; дать вердикт по кандидатам уровня SET):\n"
             f"{candidate_lines(cands)}\n\nПрофиль: {opts.profile}"
         )
@@ -438,18 +445,41 @@ async def _questions_stage(defects: list[AuditDefect], g: Grounder, state: dict,
 
     runtime, cache, suite = state["runtime"], state["cache"], state["suite"]
     focus = [d for d in defects if d.severity in ("Blocker", "Critical", "Major")] or defects
-    deps = AgentDeps(grounder=g, agent_name="QuestionSynthesizerAgent", valid_defect_ids={d.defect_id for d in defects})
-    _say(opts, "LLM 4/4: QuestionSynthesizerAgent — бэклог уточняющих вопросов")
-    try:
-        out = await _tracked(opts, "questions", "QuestionSynthesizerAgent · вопросы по ролям + EARS", runtime, suite.questions, f"ПОДТВЕРЖДЁННЫЕ ДЕФЕКТЫ:\n{defect_lines(focus[:80])}", deps, QuestionSet, cache)
-    except Exception as exc:
-        notes.append(f"QuestionSynthesizerAgent недоступен ({_why(exc)}); вопросы сформированы по шаблонам.")
+    listing = defect_lines(focus[:80])
+    _say(opts, "LLM 4/4: QuestionSynthesizerAgent ×2 — бизнес-роли ‖ технические роли")
+
+    async def group(key: str, roles: tuple[str, ...], label: str):
+        """Две независимые половины бэклога параллельно: время генерации пропорционально объёму ответа."""
+        deps = AgentDeps(grounder=g, agent_name="QuestionSynthesizerAgent", valid_defect_ids={d.defect_id for d in defects})
+        prompt = (
+            f"ПОДТВЕРЖДЁННЫЕ ДЕФЕКТЫ:\n{listing}\n\n"
+            f"В ЭТОМ ВЫЗОВЕ формируй вопросы ТОЛЬКО для ролей: {', '.join(roles)} ({label}); 4–9 вопросов. "
+            "Дефекты вне компетенции этих ролей пропусти — их закроет параллельный вызов для других ролей."
+        )
+        out = await _tracked(opts, key, f"QuestionSynthesizerAgent · {label}: {', '.join(roles)}", runtime,
+                             suite.questions, prompt, deps, QuestionSet, cache)
+        _absorb(state, deps)
+        return [q for q in out.questions if q.target_role in roles]  # type: ignore[attr-defined]
+
+    results = await asyncio.gather(
+        group("questions_biz", ("PO", "BA", "QA"), "бизнес и приёмка"),
+        group("questions_tech", ("SA", "InfoSec"), "архитектура, API и ИБ"),
+        return_exceptions=True,
+    )
+    failed = [r for r in results if isinstance(r, BaseException)]
+    if len(failed) == len(results):
+        notes.append(f"QuestionSynthesizerAgent недоступен ({_why(failed[0])}); вопросы сформированы по шаблонам.")
         return []
-    _absorb(state, deps)
+    if failed:
+        notes.append(f"QuestionSynthesizerAgent: одна из двух групп ролей недоступна ({_why(failed[0])}); "
+                     "бэклог вопросов неполный.")
     qs = []
-    for cq in out.questions:  # type: ignore[attr-defined]
-        res = g.ground(cq.before_text)
-        qs.append(Question(**cq.model_dump(), before_grounded=res.found, before_location=res.location if res.found else ""))
+    for part in results:
+        if isinstance(part, BaseException):
+            continue
+        for cq in part:
+            res = g.ground(cq.before_text)
+            qs.append(Question(**cq.model_dump(), before_grounded=res.found, before_location=res.location if res.found else ""))
     return qs
 
 
@@ -557,7 +587,10 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
             model_name = None
             passport.mode = "offline"
 
-    _say(opts, "Шаг 3/5: Детерминированный анализ (NLP, IEEE 830, финтех-правила)")
+    _say(opts, "Шаг 3/5: Детерминированный анализ (NLP, IEEE 830, финтех-правила, граф трассировки)")
+    trace_graph = build_graph(doc, reqs)
+    if state:
+        state["graph"] = trace_graph
     cands = analyze(doc, reqs, g, opts.profile)
     for i, c in enumerate(cands, start=1):
         c.defect_id = f"C-{i:03d}"
@@ -577,7 +610,7 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
             else:
                 rejected.append(RejectedCandidate(rule_id=c.rule_id, req_id=c.req_id, quote=c.exact_quote, reason=why))
         # пост-фильтр ложных срабатываний LLM (before == after, верная арифметика, curl -G)
-        llm_defects, false_pos = split_false_positives(llm_defects)
+        llm_defects, false_pos = split_false_positives(llm_defects, {r.req_id: r.section_path for r in reqs})
         for d, why in false_pos:
             rejected.append(RejectedCandidate(rule_id=d.rule_id or d.source, req_id=d.req_id, quote=d.exact_quote,
                                               reason=f"пост-фильтр: {why}"))
@@ -593,6 +626,15 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
     questions: list[Question] = []
     if model_name and state:
         questions = await _questions_stage(defects, g, state, opts, notes)
+    if opts.timings:
+        t = opts.timings
+        par = max((v for k, v in t.items() if k.startswith(("quality", "cross", "consistency"))), default=0.0)
+        qmax = max((v for k, v in t.items() if k.startswith("questions")), default=0.0)
+        notes.append(
+            "Время LLM-этапов: " + ", ".join(f"{k} {v:.0f} с" for k, v in t.items())
+            + f". Критический путь: нарезка {t.get('extract', 0):.0f} с → параллельный аудит {par:.0f} с"
+            f" → вопросы {qmax:.0f} с."
+        )
     if not questions:
         questions = fallback_questions(defects)
     questions = [
@@ -624,6 +666,7 @@ async def _run_main(pre, report: AuditReport, opts: AuditOptions, model_name: st
     report.api_matrix = matrix
     report.api_endpoints = state.get("api_endpoints", []) if state else []
     report.acceptance_traces = state.get("traces", []) if state else []
+    report.trace_graph = trace_graph
     report.questions = questions
     report.rejected_candidates = rejected
     _scrub_texts(report, g.valid_req_ids)
