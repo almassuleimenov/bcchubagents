@@ -27,5 +27,7 @@ def agent_version() -> str:
     if not commit:
         return f"v{__version__} (git недоступен)"
     tag = _git("describe", "--tags", "--exact-match")
-    dirty = " +незакоммиченные изменения" if _git("status", "--porcelain", "--untracked-files=no") else ""
+    # отчёты — выходные артефакты прогона, а не код агента: их правки версию агента не «пачкают»
+    changed = _git("status", "--porcelain", "--untracked-files=no", "--", ".", ":(exclude)reports")
+    dirty = " +незакоммиченные изменения" if changed else ""
     return f"v{__version__} · {tag or 'commit'} {commit}{dirty}"
