@@ -180,7 +180,11 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 .q{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px 18px}
 .q[hidden]{display:none}
 .q-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px}
-.prio{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:6px;background:var(--ink);color:var(--surface);font-weight:700;font-variant-numeric:tabular-nums}
+.prio{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;background:var(--na-bg);color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
+.prio-s{font-weight:500;font-size:11.5px}
+.prio.p0{background:var(--Blocker);color:var(--surface)}
+.prio.p1{background:color-mix(in srgb,var(--Critical) 16%,transparent);color:var(--Critical)}
+.prio.p2{background:color-mix(in srgb,var(--Major) 14%,transparent);color:var(--Major)}
 .role{font-weight:700}.role-full{color:var(--ink-3)}.qid{margin-left:auto;font-family:var(--mono);color:var(--ink-3)}
 .q-t{margin-top:10px;font-size:16px;line-height:1.4;max-width:90ch}
 .q-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:14px}
@@ -254,8 +258,8 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   <div class="hero-main">
     <div class="doc">
       <h1>Уведомление о расходах по карте</h1>
-      <p class="meta"><span>requirements.md</span><span>26.11.2026, 23:46 (UTC+05:00)</span>
-        <span>модель: <code>офлайн-режим, без LLM</code></span><span><code>v1.0.0 · commit 3fd6cd2 +незакоммиченные изменения</code></span></p>
+      <p class="meta"><span>requirements.md</span><span>27.11.2026, 06:49 (UTC+05:00)</span>
+        <span>модель: <code>офлайн-режим, без LLM</code></span><span><code>v1.0.1 · v1.0.1 28221cb</code></span></p>
     </div>
     <div class="verdict-row">
       <div class="verdict v-bad"><span class="verdict-k">Вердикт</span><strong>NO-GO</strong></div>
@@ -275,7 +279,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
     <span class="cite cite-ok" title="Цитаты проверены по исходнику: 0; точных 0, нечётких 0, исправлено повторным запросом 0; в карантин ушло 0 гипотез без опоры в тексте — в отчёт они не попали."><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 3 8.3 7 9.5 4-1.2 7-5.1 7-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>
       100% Grounded · 0 галлюцинаций</span>
     <span class="mut">требований 52 · дефектов 32 · с дефектами 16
-      · LLM-запросов 0 · из кэша 0 · 1 с</span>
+      · LLM-запросов 0 · из кэша 0 · 5 с</span>
     <details class="journal"><summary>Журнал прогона</summary>
       <div class="journal-body">
         <p class="mut">Цитаты проверены по исходнику: 0; точных 0, нечётких 0, исправлено повторным запросом 0; в карантин ушло 0 гипотез без опоры в тексте — в отчёт они не попали.</p>
@@ -629,9 +633,111 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
     <p class="mut">Решения, без которых требование нельзя реализовать и проверить. Правка «Стало» — в синтаксисе EARS.</p></div>
     <div class="chips roles" role="group" aria-label="Роль"><button class="chip" data-role="" aria-pressed="true">Все <span class="n">14</span></button><button class="chip" data-role="PO" aria-pressed="false" title="Product Owner — бизнес-правила">PO <span class="n">1</span></button><button class="chip" data-role="BA" aria-pressed="false" title="Бизнес-аналитик — формулировки и сценарии">BA <span class="n">2</span></button><button class="chip" data-role="SA" aria-pressed="false" title="Системный аналитик / архитектор — API, данные, интеграции">SA <span class="n">6</span></button><button class="chip" data-role="QA" aria-pressed="false" title="QA — критерии приёмки и тест-дизайн">QA <span class="n">3</span></button><button class="chip" data-role="InfoSec" aria-pressed="false" title="Информационная безопасность — PCI DSS, ПДн">InfoSec <span class="n">2</span></button></div>
     <div class="qs">
-<article class="q" data-role="PO" id="q-Q-01">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">PO</span>
-    <span class="role-full">Product Owner — бизнес-правила</span><span class="qid">Q-01</span></div>
+<article class="q" data-role="SA" id="q-Q-01">
+  <div class="q-h"><span class="prio p0" title="Приоритет P0: закрывает дефект уровня Blocker">P0<span class="prio-s">Blocker</span></span><span class="role">SA</span>
+    <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-01</span></div>
+  <h3 class="q-t">Каким методом приложение получает текущий порог, состояние переключателя и сумму расходов за месяц?</h3>
+  <div class="q-grid">
+    <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">Отдельный GET /cards/{cardId}/spending-alert</li><li class="opt">Вернуть данные в ответе существующего метода и в профиле карты</li><li class="opt">Сумму за месяц брать из сервиса расходов отдельным методом</li></ol>
+      <p class="rec-why"><b>Рекомендация.</b> Отдельный GET — экран открывается без побочных эффектов.</p></div>
+    <div><h4>Цена неопределённости</h4><p>Без метода чтения экран «Уведомления» не реализуем; требуется новый эндпоинт и тесты.</p>
+      <h4>Закрывает дефекты</h4><p class="drefs"><a class="dref" href="#card-D-001" data-goto="D-001">D-001</a></p></div>
+  </div>
+  <div class="diff" role="group" aria-label="Правка требования">
+    <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 52</span><p>Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API».</p></div>
+    <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Когда клиент открывает экран «Уведомления», мобильное приложение должно получать GET /cards/{cardId}/spending-alert с полями threshold, enabled, spentThisMonth (тиын) и currency=KZT.</p></div>
+  </div>
+  <div class="q-f"><button class="btn copy" data-md="**[Q-01] Каким методом приложение получает текущий порог, состояние переключателя и сумму расходов за месяц?**
+
+Роль: SA · приоритет P0 (Blocker) · дефекты: D-001
+
+**Варианты решения:**
+- Отдельный GET /cards/{cardId}/spending-alert
+- Вернуть данные в ответе существующего метода и в профиле карты
+- Сумму за месяц брать из сервиса расходов отдельным методом
+
+**Рекомендация:** Отдельный GET — экран открывается без побочных эффектов.
+
+**Цена неопределённости:** Без метода чтения экран «Уведомления» не реализуем; требуется новый эндпоинт и тесты.
+
+**Было:**
+&gt; Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API».
+
+**Стало (EARS):**
+&gt; Когда клиент открывает экран «Уведомления», мобильное приложение должно получать GET /cards/{cardId}/spending-alert с полями threshold, enabled, spentThisMonth (тиын) и currency=KZT.
+"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
+</article>
+<article class="q" data-role="SA" id="q-Q-02">
+  <div class="q-h"><span class="prio p0" title="Приоритет P0: закрывает дефект уровня Blocker">P0<span class="prio-s">Blocker</span></span><span class="role">SA</span>
+    <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-02</span></div>
+  <h3 class="q-t">Каким HTTP-методом и по какому ресурсу сохраняется настройка уведомления?</h3>
+  <div class="q-grid">
+    <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">PUT /cards/{cardId}/spending-alert с JSON-телом (идемпотентная замена)</li><li class="opt">POST /alerts с JSON-телом</li><li class="opt">Оставить GET (не рекомендуется)</li></ol>
+      <p class="rec-why"><b>Рекомендация.</b> PUT — операция заменяет настройку целиком и естественно идемпотентна.</p></div>
+    <div><h4>Цена неопределённости</h4><p>Меняет контракт клиента и API-шлюза, правила кэширования/логирования и набор API-тестов.</p>
+      <h4>Закрывает дефекты</h4><p class="drefs"><a class="dref" href="#card-D-002" data-goto="D-002">D-002</a></p></div>
+  </div>
+  <div class="diff" role="group" aria-label="Правка требования">
+    <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 104</span><p>REST type | GET</p></div>
+    <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Когда клиент сохраняет настройку уведомления, сервис настроек должен принимать запрос PUT /cards/{cardId}/spending-alert с JSON-телом {threshold, enabled}.</p></div>
+  </div>
+  <div class="q-f"><button class="btn copy" data-md="**[Q-02] Каким HTTP-методом и по какому ресурсу сохраняется настройка уведомления?**
+
+Роль: SA · приоритет P0 (Blocker) · дефекты: D-002
+
+**Варианты решения:**
+- PUT /cards/{cardId}/spending-alert с JSON-телом (идемпотентная замена)
+- POST /alerts с JSON-телом
+- Оставить GET (не рекомендуется)
+
+**Рекомендация:** PUT — операция заменяет настройку целиком и естественно идемпотентна.
+
+**Цена неопределённости:** Меняет контракт клиента и API-шлюза, правила кэширования/логирования и набор API-тестов.
+
+**Было:**
+&gt; REST type | GET
+
+**Стало (EARS):**
+&gt; Когда клиент сохраняет настройку уведомления, сервис настроек должен принимать запрос PUT /cards/{cardId}/spending-alert с JSON-телом {threshold, enabled}.
+"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
+</article>
+<article class="q" data-role="SA" id="q-Q-03">
+  <div class="q-h"><span class="prio p0" title="Приоритет P0: закрывает дефект уровня Blocker">P0<span class="prio-s">Blocker</span></span><span class="role">SA</span>
+    <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-03</span></div>
+  <h3 class="q-t">Каким HTTP-кодом и в каком формате возвращается ошибка валидации суммы порога?</h3>
+  <div class="q-grid">
+    <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">422 + problem+json {code, message, field}</li><li class="opt">400 + {message}</li><li class="opt">200 + result=ERROR (как сейчас)</li></ol>
+      <p class="rec-why"><b>Рекомендация.</b> 422 с единым форматом ошибки — однозначно для клиента и мониторинга.</p></div>
+    <div><h4>Цена неопределённости</h4><p>Влияет на обработку ошибок в приложении, тексты под полем ввода и негативные тесты.</p>
+      <h4>Закрывает дефекты</h4><p class="drefs"><a class="dref" href="#card-D-003" data-goto="D-003">D-003</a></p></div>
+  </div>
+  <div class="diff" role="group" aria-label="Правка требования">
+    <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 171</span><p>{&quot;result&quot;:&quot;ERROR&quot;,&quot;message&quot;:&quot;Проверьте сумму&quot;}</p></div>
+    <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Если порог вне диапазона 1 000–1 000 000 ₸ или не целый, то сервис настроек должен вернуть HTTP 422 с телом {code: &quot;THRESHOLD_OUT_OF_RANGE&quot;, message, field: &quot;threshold&quot;} и не изменять действующую настройку.</p></div>
+  </div>
+  <div class="q-f"><button class="btn copy" data-md="**[Q-03] Каким HTTP-кодом и в каком формате возвращается ошибка валидации суммы порога?**
+
+Роль: SA · приоритет P0 (Blocker) · дефекты: D-003
+
+**Варианты решения:**
+- 422 + problem+json {code, message, field}
+- 400 + {message}
+- 200 + result=ERROR (как сейчас)
+
+**Рекомендация:** 422 с единым форматом ошибки — однозначно для клиента и мониторинга.
+
+**Цена неопределённости:** Влияет на обработку ошибок в приложении, тексты под полем ввода и негативные тесты.
+
+**Было:**
+&gt; {&quot;result&quot;:&quot;ERROR&quot;,&quot;message&quot;:&quot;Проверьте сумму&quot;}
+
+**Стало (EARS):**
+&gt; Если порог вне диапазона 1 000–1 000 000 ₸ или не целый, то сервис настроек должен вернуть HTTP 422 с телом {code: &quot;THRESHOLD_OUT_OF_RANGE&quot;, message, field: &quot;threshold&quot;} и не изменять действующую настройку.
+"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
+</article>
+<article class="q" data-role="PO" id="q-Q-04">
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">PO</span>
+    <span class="role-full">Product Owner — бизнес-правила</span><span class="qid">Q-04</span></div>
   <h3 class="q-t">По какой метке времени и в каком часовом поясе определяется месяц расходов?</h3>
   <div class="q-grid">
     <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">Дата/время авторизации покупки по Asia/Almaty (UTC+5)</li><li class="opt">Дата проведения (posting) по UTC+5</li><li class="opt">Дата клиринга</li></ol>
@@ -643,9 +749,9 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
     <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 38</span><p>Месяц определяется по дате совершения покупки в Алматы.</p></div>
     <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Сервис расходов должен относить покупку к календарному месяцу по дате и времени её авторизации в часовом поясе Asia/Almaty (UTC+5).</p></div>
   </div>
-  <div class="q-f"><button class="btn copy" data-md="**[Q-01] По какой метке времени и в каком часовом поясе определяется месяц расходов?**
+  <div class="q-f"><button class="btn copy" data-md="**[Q-04] По какой метке времени и в каком часовом поясе определяется месяц расходов?**
 
-Роль: PO · приоритет 2 · дефекты: D-006, D-010
+Роль: PO · приоритет P2 (Major) · дефекты: D-006, D-010
 
 **Варианты решения:**
 - Дата/время авторизации покупки по Asia/Almaty (UTC+5)
@@ -663,9 +769,9 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 &gt; Сервис расходов должен относить покупку к календарному месяцу по дате и времени её авторизации в часовом поясе Asia/Almaty (UTC+5).
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
-<article class="q" data-role="BA" id="q-Q-02">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">BA</span>
-    <span class="role-full">Бизнес-аналитик — формулировки и сценарии</span><span class="qid">Q-02</span></div>
+<article class="q" data-role="BA" id="q-Q-05">
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">BA</span>
+    <span class="role-full">Бизнес-аналитик — формулировки и сценарии</span><span class="qid">Q-05</span></div>
   <h3 class="q-t">Можно ли разделить составные требования на атомарные с собственными ID?</h3>
   <div class="q-grid">
     <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">Да, Ф-2.1…Ф-2.4</li><li class="opt">Оставить как есть</li></ol>
@@ -677,9 +783,9 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
     <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 38</span><p>Ф-2. Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются.</p></div>
     <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Сервис расходов должен исключать переводы и снятие наличных из расходов месяца.</p></div>
   </div>
-  <div class="q-f"><button class="btn copy" data-md="**[Q-02] Можно ли разделить составные требования на атомарные с собственными ID?**
+  <div class="q-f"><button class="btn copy" data-md="**[Q-05] Можно ли разделить составные требования на атомарные с собственными ID?**
 
-Роль: BA · приоритет 2 · дефекты: D-005, D-023, D-025, D-027
+Роль: BA · приоритет P2 (Major) · дефекты: D-005, D-023, D-025, D-027
 
 **Варианты решения:**
 - Да, Ф-2.1…Ф-2.4
@@ -696,9 +802,9 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 &gt; Сервис расходов должен исключать переводы и снятие наличных из расходов месяца.
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
-<article class="q" data-role="BA" id="q-Q-03">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">BA</span>
-    <span class="role-full">Бизнес-аналитик — формулировки и сценарии</span><span class="qid">Q-03</span></div>
+<article class="q" data-role="BA" id="q-Q-06">
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">BA</span>
+    <span class="role-full">Бизнес-аналитик — формулировки и сценарии</span><span class="qid">Q-06</span></div>
   <h3 class="q-t">Кто и когда заполняет незаполненные разделы (тестирование, версия/дата)?</h3>
   <div class="q-grid">
     <div><h4>Варианты решения</h4><ol class="opts"><li class="opt rec">До передачи в разработку<span class=rec-k>рекомендуется</span></li><li class="opt">Параллельно с разработкой с фиксацией TBD-реестра</li></ol>
@@ -710,9 +816,9 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
     <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 57</span><p>заполняются тестировщиками</p></div>
     <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Документ требований должен содержать версию, дату и заполненный раздел тестирования до передачи в разработку.</p></div>
   </div>
-  <div class="q-f"><button class="btn copy" data-md="**[Q-03] Кто и когда заполняет незаполненные разделы (тестирование, версия/дата)?**
+  <div class="q-f"><button class="btn copy" data-md="**[Q-06] Кто и когда заполняет незаполненные разделы (тестирование, версия/дата)?**
 
-Роль: BA · приоритет 2 · дефекты: D-017, D-019
+Роль: BA · приоритет P2 (Major) · дефекты: D-017, D-019
 
 **Варианты решения:**
 - До передачи в разработку
@@ -730,7 +836,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="SA" id="q-Q-07">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">SA</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">SA</span>
     <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-07</span></div>
   <h3 class="q-t">Как гарантируется не более одного push за месяц при параллельной обработке событий по одной карте?</h3>
   <div class="q-grid">
@@ -745,7 +851,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-07] Как гарантируется не более одного push за месяц при параллельной обработке событий по одной карте?**
 
-Роль: SA · приоритет 2 · дефекты: D-007
+Роль: SA · приоритет P2 (Major) · дефекты: D-007
 
 **Варианты решения:**
 - Уникальный ключ (карта, месяц) + compare-and-set признака отправки
@@ -764,7 +870,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="SA" id="q-Q-08">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">SA</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">SA</span>
     <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-08</span></div>
   <h3 class="q-t">В каких единицах хранятся и сравниваются суммы покупок и порог?</h3>
   <div class="q-grid">
@@ -779,7 +885,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-08] В каких единицах хранятся и сравниваются суммы покупок и порог?**
 
-Роль: SA · приоритет 2 · дефекты: D-009
+Роль: SA · приоритет P2 (Major) · дефекты: D-009
 
 **Варианты решения:**
 - Всё в тиынах (int64)
@@ -798,7 +904,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="SA" id="q-Q-09">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">SA</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">SA</span>
     <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-09</span></div>
   <h3 class="q-t">Какие типы данных фиксируем для полей суммы и признака включения в запросе и ответе?</h3>
   <div class="q-grid">
@@ -813,7 +919,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-09] Какие типы данных фиксируем для полей суммы и признака включения в запросе и ответе?**
 
-Роль: SA · приоритет 2 · дефекты: D-014, D-015
+Роль: SA · приоритет P2 (Major) · дефекты: D-014, D-015
 
 **Варианты решения:**
 - integer (тиын) и boolean везде
@@ -832,7 +938,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="QA" id="q-Q-10">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">QA</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">QA</span>
     <span class="role-full">QA — критерии приёмки и тест-дизайн</span><span class="qid">Q-10</span></div>
   <h3 class="q-t">Какие граничные значения порога проверяем и какие тексты ошибок ожидаем?</h3>
   <div class="q-grid">
@@ -847,7 +953,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-10] Какие граничные значения порога проверяем и какие тексты ошибок ожидаем?**
 
-Роль: QA · приоритет 2 · дефекты: D-004
+Роль: QA · приоритет P2 (Major) · дефекты: D-004
 
 **Варианты решения:**
 - 999, 1 000, 1 000 000, 1 000 001, 1 500,5
@@ -865,7 +971,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="QA" id="q-Q-11">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">QA</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">QA</span>
     <span class="role-full">QA — критерии приёмки и тест-дизайн</span><span class="qid">Q-11</span></div>
   <h3 class="q-t">Как измеряется время «в течение минуты» и при какой нагрузке?</h3>
   <div class="q-grid">
@@ -880,7 +986,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-11] Как измеряется время «в течение минуты» и при какой нагрузке?**
 
-Роль: QA · приоритет 2 · дефекты: D-008
+Роль: QA · приоритет P2 (Major) · дефекты: D-008
 
 **Варианты решения:**
 - p99 ≤ 60 с при 200 событиях/с
@@ -899,7 +1005,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="QA" id="q-Q-12">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">QA</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">QA</span>
     <span class="role-full">QA — критерии приёмки и тест-дизайн</span><span class="qid">Q-12</span></div>
   <h3 class="q-t">Какие сценарии должны получить критерии приёмки (возврат, смена порога, повторное достижение, снятие наличных)?</h3>
   <div class="q-grid">
@@ -914,7 +1020,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-12] Какие сценарии должны получить критерии приёмки (возврат, смена порога, повторное достижение, снятие наличных)?**
 
-Роль: QA · приоритет 2 · дефекты: D-018
+Роль: QA · приоритет P2 (Major) · дефекты: D-018
 
 **Варианты решения:**
 - По ≥1 позитивному и негативному критерию на каждое правило
@@ -932,7 +1038,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="InfoSec" id="q-Q-13">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">InfoSec</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">InfoSec</span>
     <span class="role-full">Информационная безопасность — PCI DSS, ПДн</span><span class="qid">Q-13</span></div>
   <h3 class="q-t">Что такое cardId (PAN, токен, внутренний ID) и допустима ли его передача в query-строке?</h3>
   <div class="q-grid">
@@ -947,7 +1053,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-13] Что такое cardId (PAN, токен, внутренний ID) и допустима ли его передача в query-строке?**
 
-Роль: InfoSec · приоритет 2 · дефекты: D-012
+Роль: InfoSec · приоритет P2 (Major) · дефекты: D-012
 
 **Варианты решения:**
 - Непрозрачный токен карты в path
@@ -966,7 +1072,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article>
 <article class="q" data-role="InfoSec" id="q-Q-14">
-  <div class="q-h"><span class="prio" title="Приоритет">2</span><span class="role">InfoSec</span>
+  <div class="q-h"><span class="prio p2" title="Приоритет P2: закрывает дефект уровня Major">P2<span class="prio-s">Major</span></span><span class="role">InfoSec</span>
     <span class="role-full">Информационная безопасность — PCI DSS, ПДн</span><span class="qid">Q-14</span></div>
   <h3 class="q-t">Какой код возвращать при обращении к чужой карте — 403 или 404?</h3>
   <div class="q-grid">
@@ -981,7 +1087,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
   </div>
   <div class="q-f"><button class="btn copy" data-md="**[Q-14] Какой код возвращать при обращении к чужой карте — 403 или 404?**
 
-Роль: InfoSec · приоритет 2 · дефекты: D-016
+Роль: InfoSec · приоритет P2 (Major) · дефекты: D-016
 
 **Варианты решения:**
 - 404 для чужой и несуществующей карты (защита от перебора)
@@ -996,108 +1102,6 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 
 **Стало (EARS):**
 &gt; Если карта не принадлежит владельцу сессии или не существует, то сервис настроек должен вернуть HTTP 404 с сообщением «Карта не найдена».
-"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
-</article>
-<article class="q" data-role="SA" id="q-Q-04">
-  <div class="q-h"><span class="prio" title="Приоритет">—</span><span class="role">SA</span>
-    <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-04</span></div>
-  <h3 class="q-t">Каким методом приложение получает текущий порог, состояние переключателя и сумму расходов за месяц?</h3>
-  <div class="q-grid">
-    <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">Отдельный GET /cards/{cardId}/spending-alert</li><li class="opt">Вернуть данные в ответе существующего метода и в профиле карты</li><li class="opt">Сумму за месяц брать из сервиса расходов отдельным методом</li></ol>
-      <p class="rec-why"><b>Рекомендация.</b> Отдельный GET — экран открывается без побочных эффектов.</p></div>
-    <div><h4>Цена неопределённости</h4><p>Без метода чтения экран «Уведомления» не реализуем; требуется новый эндпоинт и тесты.</p>
-      <h4>Закрывает дефекты</h4><p class="drefs"><a class="dref" href="#card-D-001" data-goto="D-001">D-001</a></p></div>
-  </div>
-  <div class="diff" role="group" aria-label="Правка требования">
-    <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 52</span><p>Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API».</p></div>
-    <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Когда клиент открывает экран «Уведомления», мобильное приложение должно получать GET /cards/{cardId}/spending-alert с полями threshold, enabled, spentThisMonth (тиын) и currency=KZT.</p></div>
-  </div>
-  <div class="q-f"><button class="btn copy" data-md="**[Q-04] Каким методом приложение получает текущий порог, состояние переключателя и сумму расходов за месяц?**
-
-Роль: SA · приоритет 0 · дефекты: D-001
-
-**Варианты решения:**
-- Отдельный GET /cards/{cardId}/spending-alert
-- Вернуть данные в ответе существующего метода и в профиле карты
-- Сумму за месяц брать из сервиса расходов отдельным методом
-
-**Рекомендация:** Отдельный GET — экран открывается без побочных эффектов.
-
-**Цена неопределённости:** Без метода чтения экран «Уведомления» не реализуем; требуется новый эндпоинт и тесты.
-
-**Было:**
-&gt; Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API».
-
-**Стало (EARS):**
-&gt; Когда клиент открывает экран «Уведомления», мобильное приложение должно получать GET /cards/{cardId}/spending-alert с полями threshold, enabled, spentThisMonth (тиын) и currency=KZT.
-"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
-</article>
-<article class="q" data-role="SA" id="q-Q-05">
-  <div class="q-h"><span class="prio" title="Приоритет">—</span><span class="role">SA</span>
-    <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-05</span></div>
-  <h3 class="q-t">Каким HTTP-методом и по какому ресурсу сохраняется настройка уведомления?</h3>
-  <div class="q-grid">
-    <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">PUT /cards/{cardId}/spending-alert с JSON-телом (идемпотентная замена)</li><li class="opt">POST /alerts с JSON-телом</li><li class="opt">Оставить GET (не рекомендуется)</li></ol>
-      <p class="rec-why"><b>Рекомендация.</b> PUT — операция заменяет настройку целиком и естественно идемпотентна.</p></div>
-    <div><h4>Цена неопределённости</h4><p>Меняет контракт клиента и API-шлюза, правила кэширования/логирования и набор API-тестов.</p>
-      <h4>Закрывает дефекты</h4><p class="drefs"><a class="dref" href="#card-D-002" data-goto="D-002">D-002</a></p></div>
-  </div>
-  <div class="diff" role="group" aria-label="Правка требования">
-    <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 104</span><p>REST type | GET</p></div>
-    <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Когда клиент сохраняет настройку уведомления, сервис настроек должен принимать запрос PUT /cards/{cardId}/spending-alert с JSON-телом {threshold, enabled}.</p></div>
-  </div>
-  <div class="q-f"><button class="btn copy" data-md="**[Q-05] Каким HTTP-методом и по какому ресурсу сохраняется настройка уведомления?**
-
-Роль: SA · приоритет 0 · дефекты: D-002
-
-**Варианты решения:**
-- PUT /cards/{cardId}/spending-alert с JSON-телом (идемпотентная замена)
-- POST /alerts с JSON-телом
-- Оставить GET (не рекомендуется)
-
-**Рекомендация:** PUT — операция заменяет настройку целиком и естественно идемпотентна.
-
-**Цена неопределённости:** Меняет контракт клиента и API-шлюза, правила кэширования/логирования и набор API-тестов.
-
-**Было:**
-&gt; REST type | GET
-
-**Стало (EARS):**
-&gt; Когда клиент сохраняет настройку уведомления, сервис настроек должен принимать запрос PUT /cards/{cardId}/spending-alert с JSON-телом {threshold, enabled}.
-"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
-</article>
-<article class="q" data-role="SA" id="q-Q-06">
-  <div class="q-h"><span class="prio" title="Приоритет">—</span><span class="role">SA</span>
-    <span class="role-full">Системный аналитик / архитектор — API, данные, интеграции</span><span class="qid">Q-06</span></div>
-  <h3 class="q-t">Каким HTTP-кодом и в каком формате возвращается ошибка валидации суммы порога?</h3>
-  <div class="q-grid">
-    <div><h4>Варианты решения</h4><ol class="opts"><li class="opt">422 + problem+json {code, message, field}</li><li class="opt">400 + {message}</li><li class="opt">200 + result=ERROR (как сейчас)</li></ol>
-      <p class="rec-why"><b>Рекомендация.</b> 422 с единым форматом ошибки — однозначно для клиента и мониторинга.</p></div>
-    <div><h4>Цена неопределённости</h4><p>Влияет на обработку ошибок в приложении, тексты под полем ввода и негативные тесты.</p>
-      <h4>Закрывает дефекты</h4><p class="drefs"><a class="dref" href="#card-D-003" data-goto="D-003">D-003</a></p></div>
-  </div>
-  <div class="diff" role="group" aria-label="Правка требования">
-    <div class="del"><span class="diff-k">Было</span><span class="mut">стр. 171</span><p>{&quot;result&quot;:&quot;ERROR&quot;,&quot;message&quot;:&quot;Проверьте сумму&quot;}</p></div>
-    <div class="ins"><span class="diff-k">Стало (EARS)</span><p>Если порог вне диапазона 1 000–1 000 000 ₸ или не целый, то сервис настроек должен вернуть HTTP 422 с телом {code: &quot;THRESHOLD_OUT_OF_RANGE&quot;, message, field: &quot;threshold&quot;} и не изменять действующую настройку.</p></div>
-  </div>
-  <div class="q-f"><button class="btn copy" data-md="**[Q-06] Каким HTTP-кодом и в каком формате возвращается ошибка валидации суммы порога?**
-
-Роль: SA · приоритет 0 · дефекты: D-003
-
-**Варианты решения:**
-- 422 + problem+json {code, message, field}
-- 400 + {message}
-- 200 + result=ERROR (как сейчас)
-
-**Рекомендация:** 422 с единым форматом ошибки — однозначно для клиента и мониторинга.
-
-**Цена неопределённости:** Влияет на обработку ошибок в приложении, тексты под полем ввода и негативные тесты.
-
-**Было:**
-&gt; {&quot;result&quot;:&quot;ERROR&quot;,&quot;message&quot;:&quot;Проверьте сумму&quot;}
-
-**Стало (EARS):**
-&gt; Если порог вне диапазона 1 000–1 000 000 ₸ или не целый, то сервис настроек должен вернуть HTTP 422 с телом {code: &quot;THRESHOLD_OUT_OF_RANGE&quot;, message, field: &quot;threshold&quot;} и не изменять действующую настройку.
 "><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать для Jira</button></div>
 </article></div></div>
 </section>
@@ -1132,7 +1136,7 @@ mark.on{background:color-mix(in srgb,var(--sc) 34%,transparent)}
 </section>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<footer class="foot mut">SRS Audit · v1.0.0 · commit 3fd6cd2 +незакоммиченные изменения · отчёт сгенерирован автоматически; каждая цитата сверена с исходником.</footer>
+<footer class="foot mut">SRS Audit · v1.0.1 · v1.0.1 28221cb · отчёт сгенерирован автоматически; каждая цитата сверена с исходником.</footer>
 <script>
 (() => {
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
