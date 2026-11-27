@@ -1,15 +1,25 @@
 # SRS Audit — ИИ-агент статической проверки требований
 
-> **Артефакты для жюри:**
-> [📄 Отчёт (Markdown)](reports/report.md) ·
-> [📕 Отчёт (PDF)](reports/report.pdf) ·
-> [🖥️ Интерактивный дашборд (HTML)](reports/report.html) ·
-> [🎞️ Презентация (PDF)](docs/presentation.pdf)
->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/banner-dark.png">
+  <img src="assets/readme/banner-light.png" width="100%" alt="SRS Audit — 5-ступенчатый гибридный конвейер">
+</picture>
+
+**Артефакты для жюри:**
+
+<table>
+<tr>
+<td align="center" valign="top" width="25%"><a href="reports/report.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/report-md.svg"><img src="assets/readme/icons/report-md.svg" width="48" height="48" align="absmiddle" alt=""></picture><br><b>Отчёт (Markdown)</b></a></td>
+<td align="center" valign="top" width="25%"><a href="reports/report.pdf"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/report-pdf.svg"><img src="assets/readme/icons/report-pdf.svg" width="48" height="48" align="absmiddle" alt=""></picture><br><b>Отчёт (PDF)</b></a></td>
+<td align="center" valign="top" width="25%"><a href="reports/report.html"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/dashboard.svg"><img src="assets/readme/icons/dashboard.svg" width="48" height="48" align="absmiddle" alt=""></picture><br><b>Интерактивный дашборд (HTML)</b></a></td>
+<td align="center" valign="top" width="25%"><a href="docs/presentation.pdf"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/presentation.svg"><img src="assets/readme/icons/presentation.svg" width="48" height="48" align="absmiddle" alt=""></picture><br><b>Презентация (PDF)</b></a></td>
+</tr>
+</table>
+
 > Офлайн-версия без LLM (только детерминированные правила): [MD](reports/offline-report.md) · [PDF](reports/offline-report.pdf) · [HTML](reports/offline-report.html).
 > HTML-дашборд — один автономный файл без интернета: скачайте и откройте в браузере.
 
-> **BCC-HUB x MNU FinTech Hackathon** · задание: [`docs/TASK.md`](docs/TASK.md) · проверяемый документ: [`docs/requirements.md`](docs/requirements.md)
+> **BCC-HUB x MNU FinTech Hackathon** · задание: <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/task.svg"><img src="assets/readme/icons/task.svg" width="18" height="18" align="absmiddle" alt=""></picture> [`docs/TASK.md`](docs/TASK.md) · проверяемый документ: <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/doc-search.svg"><img src="assets/readme/icons/doc-search.svg" width="18" height="18" align="absmiddle" alt=""></picture> [`docs/requirements.md`](docs/requirements.md)
 
 Агент читает документ требований (`.md`, `.pdf`, `.docx`, `.txt`), нарезает его на атомарные требования, проверяет каждое требование и весь набор по **ISO/IEC/IEEE 29148:2018** (§5.2.5, §5.2.6, §5.2.7), **IEEE Std 830-1998** (§4.3) и **INCOSE GtWR v4**, добавляет банковский профиль Казахстана (UTC+5, тиын/ISO 4217, PCI DSS 4.0.1, идемпотентность, гонки) и пишет отчёт на русском языке.
 
@@ -17,9 +27,9 @@
 
 ---
 
-## Быстрый старт (3 шага)
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/quickstart.svg"><img src="assets/readme/icons/quickstart.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Быстрый старт (3 шага)
 
-### 1. Установка (Python 3.11+)
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/install.svg"><img src="assets/readme/icons/install.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; 1. Установка (Python 3.11+)
 
 ```bash
 python -m venv .venv
@@ -28,7 +38,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2. Ключ LLM
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/key.svg"><img src="assets/readme/icons/key.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; 2. Ключ LLM
 
 1. Откройте [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → **Create API key**. Бесплатного тарифа достаточно.
 2. Скопируйте пример конфига и вставьте ключ:
@@ -45,7 +55,7 @@ GEMINI_MODEL=gemini-2.5-flash
 Файл `.env` в Git не попадает (он в `.gitignore`). Вместо Gemini можно указать OpenAI, Anthropic или локальную Ollama — см. `.env.example`.
 Проверить окружение: `python -m srs_audit doctor`.
 
-### 3. Прогон одной командой
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/run.svg"><img src="assets/readme/icons/run.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; 3. Прогон одной командой
 
 ```bash
 python -m srs_audit check docs/requirements.md reports/report.md
@@ -61,7 +71,7 @@ python -m srs_audit check docs/requirements.md reports/report.md --pdf --html-hi
 
 ---
 
-## Модель
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/model.svg"><img src="assets/readme/icons/model.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Модель
 
 | | |
 | :--- | :--- |
@@ -76,7 +86,7 @@ python -m srs_audit check docs/requirements.md reports/report.md --pdf --html-hi
 
 Во время прогона в терминале показывается живой индикатор `[···=#=#=#=#···] 01:23` с таймером и статусом каждого вызова агента (⟳ идёт, ✓ готово, ⚡ из кэша, ✗ ошибка и её причина). Если прервать прогон (Ctrl+C), завершённые вызовы останутся в кэше и повторный запуск продолжит с них.
 
-## CLI
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/cli.svg"><img src="assets/readme/icons/cli.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; CLI
 
 ```
 python -m srs_audit check <input_path> <output_path> [опции]
@@ -97,7 +107,7 @@ python -m srs_audit check <input_path> <output_path> [опции]
 
 ---
 
-## Архитектура: 5-ступенчатый гибридный конвейер
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/architecture.svg"><img src="assets/readme/icons/architecture.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Архитектура: 5-ступенчатый гибридный конвейер
 
 ```mermaid
 flowchart LR
@@ -154,7 +164,7 @@ flowchart LR
 | `scoring.py` | индекс качества и Go/No-Go гейт |
 | `reporting/` | Jinja2-шаблоны Markdown, PDF через typst, автономный HTML-дашборд (`html_renderer.py`) |
 
-### Защита от галлюцинаций
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/shield.svg"><img src="assets/readme/icons/shield.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Защита от галлюцинаций
 
 1. **Evidence-first схема:** модель сначала приводит дословную цитату, потом рассуждение и вывод. Поля `verified_location`, `grounding_score`, номера строк в LLM-схему не входят, поэтому модель не может их подделать.
 2. **Верификатор `grounding.py`:** цитата ищется точно, затем через `rapidfuzz.partial_ratio_alignment` (порог 86). Опечатки модели исправляются на дословный текст исходника, а перефразирование отклоняется.
@@ -164,7 +174,7 @@ flowchart LR
 6. **Статус матрицы A ↔ B — вывод из довода:** в схеме `comment` идёт раньше `status`, промпт перечисляет, когда ставить «согласовано», а код (`postfilter.reconcile_matrix_status`) ужесточает статус, если комментарий сам описывает расхождение или пробел. Смягчать вердикт модели код не может.
 7. **Проверка свободного текста:** любой `REQ-xxx` в обосновании, правке или вопросе должен существовать в нарезке, а ссылки допускаются только на реальные стандарты (ISO 4217, ISO/IEC/IEEE 29148, RFC 9110, PCI DSS 4.0.1…), без формулировок служебного промпта. Нарушение → `ModelRetry`; после исчерпания попыток текст чинится кодом («REQ-167» → «стр. 167»).
 
-### Дедупликация
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/merge.svg"><img src="assets/readme/icons/merge.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Дедупликация
 
 Одну проблему часто находят 2–3 слоя (например, «200 OK с `result=ERROR` при объявленном 400» — правило, QualityFilter и CrossCheck, причём с разных строк). Похожесть текста здесь ненадёжна: шаблонные дефекты про разные поля API (`amount` и `enabled`) совпадают на 97 %, а настоящие дубли — на 30–70 %. Поэтому `dedup.py` сравнивает **маркеры**: поля API, HTTP-коды, ID требований и тему дефекта из закрытой таксономии.
 
@@ -175,17 +185,17 @@ flowchart LR
 - **Не сливаются никогда:** дефекты про разные поля API или с разными темами, а также две находки детерминированного слоя.
 - Из группы остаётся самый содержательный дефект с **максимальной** серьёзностью (Blocker > Critical > Major > Minor), ссылки на стандарты объединяются, в отчёте видно, сколько находок и каких слоёв слито.
 
-### Пост-фильтр описательных разделов
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/filter.svg"><img src="assets/readme/icons/filter.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Пост-фильтр описательных разделов
 
 Разделы «Архитектура решения», «Дизайн процесса UI», «BPMN», «Sequence Diagram» описывают решение по определению. Претензия «лишнее проектное решение, перенесите в раздел …» к требованию из такого раздела отбрасывается кодом (`postfilter.py`), а промпт QualityFilter прямо это запрещает; раздел требования передаётся модели в каждой строке нарезки. Настоящие дефекты в этих разделах (неоднозначность, неполнота) остаются.
 
-### Граф трассировки
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/graph.svg"><img src="assets/readme/icons/graph.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Граф трассировки
 
 `graph.py` строит граф документа без LLM и без внешних библиотек: узлы — требования, критерии приёмки, поля экрана, бизнес-операции (чтение/запись), эндпоинты, параметры с типами, HTTP-статусы. Каждое ребро помечено: `EXTRACTED` — связь прямо записана в документе (ссылка «Ф-2», параметр в разделе метода, JSON-пример под заголовком статуса), `INFERRED` — выведена кодом (общие термины критерия и правила с весами IDF, поле экрана ↔ параметр API, операция ↔ метод по семантике чтения/записи).
 
 Из графа выводятся **разрывы трассировки**: правило без критерия приёмки, поле экрана без параметра API, операция без метода, статус без описания или примера. Компактная сводка (≤ 40 строк) уходит в CrossCheckFinTechAgent вместо поиска связей по всему тексту — это и держит промпт в рамках на ТЗ в 100 страниц. Граф показан в разделе 4.2a отчёта и на вкладке «Матрица A ↔ B и граф» дашборда.
 
-### HTML-дашборд
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/dashboard.svg"><img src="assets/readme/icons/dashboard.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; HTML-дашборд
 
 `--html-highlight` сохраняет рядом с отчётом один автономный HTML-файл (без CDN и интернета, светлая и тёмная тема):
 
@@ -195,17 +205,17 @@ flowchart LR
 - **«Матрица A ↔ B и граф»:** матрица расхождений, 7 финтех-доменов, граф трассировки с подсветкой связей узла и список разрывов, трассировка критериев приёмки, свойства набора;
 - **«Нарезка требований»:** таблица с поиском, фильтром по типу и счётчиком дефектов (клик ведёт к дефектам требования).
 
-### Скорость
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/speed.svg"><img src="assets/readme/icons/speed.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Скорость
 
 Этапы, не зависящие друг от друга, идут одновременно под общим лимитером запросов: три пакета QualityFilter, CrossCheck и трассировка приёмки — один параллельный этап; бэклог вопросов собирают два параллельных вызова (бизнес-роли PO / BA / QA и технические SA / InfoSec). Бюджет скрытых размышлений Gemini ограничен (1024 / 2048 токенов), а время каждого этапа и критический путь пишутся в паспорт отчёта.
 
 Замеры на эталонном документе (без кэша): было 182–239 с последовательно-тяжёлого конвейера; стало 75 с, когда все этапы отвечают штатно (нарезка 18 с → аудит 19 с → вопросы 20 с), и 143–250 с, когда `gemini-2.5-flash` перегружена и часть запросов уходит на резервную модель по таймауту.
 
-### Серьёзность Blocker
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/blocker.svg"><img src="assets/readme/icons/blocker.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Серьёзность Blocker
 
 Blocker ставится за то, что физически блокирует разработку или приёмку: нет обязательного метода API, который требует бизнес-часть; прямое противоречие правила и критерия приёмки; изменяющая операция через небезопасный `GET`; противоречивый контракт ошибок (`200 OK` + `ERROR` при объявленном `400`); утечка PAN/ПДн.
 
-### Индекс качества и гейт
+### <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/gauge.svg"><img src="assets/readme/icons/gauge.svg" width="24" height="24" align="absmiddle" alt=""></picture>&nbsp; Индекс качества и гейт
 
 `load = Σ w·n / N_требований`, `score = 100·e^(−load/1.5)`, веса: Blocker 10, Critical 5, Major 2, Minor 0.5.
 
@@ -217,7 +227,7 @@ Blocker ставится за то, что физически блокирует
 
 ---
 
-## Состав отчёта
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/report-list.svg"><img src="assets/readme/icons/report-list.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Состав отчёта
 
 Отчёт пишется на русском и соответствует разделу 6 задания:
 
@@ -228,7 +238,7 @@ Blocker ставится за то, что физически блокирует
 5. **Сводка** — число требований и нарушений по уровням, индекс качества, плотность дефектов, критичные дефекты (непроверяемые, противоречивые, неполные), статистика цитат.
 6. **Итог и план действий** — GO / CONDITIONAL GO / NO-GO с основанием, что исправить в первую очередь, бэклог вопросов по ролям (PO / BA / SA / QA / InfoSec) с вариантами решения и правками «Было → Стало» в синтаксисе EARS, ручной чек-лист эксперта, карантин гипотез и отсеянные ложные срабатывания.
 
-## Тесты
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/tests.svg"><img src="assets/readme/icons/tests.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Тесты
 
 ```bash
 pytest -q
@@ -246,7 +256,7 @@ pytest -q
 - HTML-дашборд: автономность (ни одного внешнего ресурса), 4 вкладки, карточка на каждый дефект, граф и бэклог вопросов;
 - CLI: коды возврата 0/1/2, форматы MD / JSON / PDF / HTML.
 
-## Структура репозитория
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/structure.svg"><img src="assets/readme/icons/structure.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Структура репозитория
 
 ```
 src/srs_audit/      код агента (cli, pipeline, preflight, parsers/, analyzers/, llm/, reporting/)
@@ -258,7 +268,7 @@ reports/            отчёты прогонов
 .env.example        пример конфига без ключей
 ```
 
-## Ограничения
+## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/limits.svg"><img src="assets/readme/icons/limits.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Ограничения
 
 - Содержимое диаграмм (BPMN, sequence) в PDF анализируется только по тексту подписей; такие страницы перечислены в паспорте и в чек-листе эксперта. Для страниц-сканов включается Vision-распознавание через Gemini, но точность цитат на них ниже.
 - Финтех-правила откалиброваны под банковские требования Казахстана; для других доменов используйте `--profile generic`.
