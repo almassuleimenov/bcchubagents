@@ -67,6 +67,12 @@ python -m srs_audit check docs/requirements.md reports/report.md
 python -m srs_audit check docs/requirements.md reports/report.md --pdf --html-highlight
 ```
 
+Для проверки любого своего документа (`.md`, `.pdf`, `.docx`, `.txt`) просто подставьте путь к нему первым аргументом:
+
+```bash
+python -m srs_audit check path/to/your-spec.pdf reports/custom-report.md --pdf --html-highlight
+```
+
 Без ключа (или с флагом `--offline-lint`) агент работает только на детерминированных правилах: это 0 токенов и около 1 секунды, а в паспорте отчёта будет пометка об офлайн-режиме.
 
 ---
@@ -259,13 +265,15 @@ pytest -q
 ## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/structure.svg"><img src="assets/readme/icons/structure.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Структура репозитория
 
 ```
-src/srs_audit/      код агента (cli, pipeline, preflight, parsers/, analyzers/, llm/, reporting/)
-tests/              pytest; битые файлы генерируются на лету
+src/srs_audit/         код агента (cli, pipeline, preflight, parsers/, analyzers/, llm/, reporting/)
+tests/                 pytest; битые файлы генерируются на лету
 docs/requirements.md   проверяемый документ (выдан организаторами)
-docs/TASK.md        исходное задание хакатона
-assets/fonts/       DejaVu Sans для PDF (свободная лицензия Bitstream Vera / DejaVu)
-reports/            отчёты прогонов
-.env.example        пример конфига без ключей
+docs/TASK.md           исходное задание хакатона
+docs/presentation.pdf  презентация решения для жюри
+assets/fonts/          DejaVu Sans для PDF (свободная лицензия Bitstream Vera / DejaVu)
+assets/readme/         баннер и иконки для README (светлая и тёмная темы)
+reports/               отчёты прогонов (MD, PDF, HTML, офлайн-версии)
+.env.example           пример конфига без ключей
 ```
 
 ## <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/icons-dark/limits.svg"><img src="assets/readme/icons/limits.svg" width="30" height="30" align="absmiddle" alt=""></picture>&nbsp; Ограничения
